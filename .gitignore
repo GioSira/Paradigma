@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# visual studio
+.DS_Store
+
+# Virtual environments
+.venv
+.vscode
+.hypothesis
+.pytest_cache
+.python-version
+docker-compose.yml
+
+
+# security
+.env
