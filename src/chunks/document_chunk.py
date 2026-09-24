@@ -27,7 +27,7 @@ class DocumentChunk(BaseModel):
     @field_validator("text")
     @classmethod
     def text_must_not_be_blank(cls, value):
-        # "   " supera min_length ma non produce un embedding utile.
+        # " " supera min_length ma non produce un embedding utile.
         if not value.strip():
             raise ValueError("Text cannot be empty")
         return value
@@ -102,6 +102,9 @@ class DocumentChunk(BaseModel):
 
     @classmethod
     def build_chunck_id(self) -> str:
+        """
+        For Redis DB in the future
+        """
         return f"{self.document_id}/{self.chunk_id}/{str(self.start_idx)}-{str(self.end_idx)}"
 
     def belong_to(self, document: Document) -> bool:

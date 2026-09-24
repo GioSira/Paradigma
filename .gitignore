@@ -12,7 +12,7 @@ wheels/
 # Virtual environments
 .venv
 .vscode
-.hypothesis
+.hypothesis/
 .pytest_cache
 .python-version
 docker-compose.yml
@@ -20,3 +20,8 @@ docker-compose.yml
 
 # security
 .env
+
+# considering
+graphdb/
+graphdb/__init__.py
+graphdb/db.py
