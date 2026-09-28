@@ -33,7 +33,7 @@ from pinecone import ServerlessSpec
 # (es. src.chunks...) Python carica la classe due volte e i chunk non
 # risultano mai uguali, perche' __eq__ fa isinstance su due classi distinte.
 from src.chunks.document_chunk import DocumentChunk
-from src.db.pinecone_db import IndexMode, PineconeDB
+from src.vectordb.pinecone_db import IndexMode, PineconeDB
 
 load_dotenv()
 

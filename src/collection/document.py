@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
-from datetime import datetime
+from pydantic import BaseModel, Field, ConfigDict, AwareDatetime
+from datetime import datetime, timezone
 from typing import Optional, ClassVar
 import ujson
+
 
 class Document(BaseModel):
 
@@ -15,11 +16,12 @@ class Document(BaseModel):
 
     DATE_FORMAT: ClassVar[str] = "[{d:02d}/{m:02d}/{y:04d} - {hh:02d}:{mm:02d}:{ss:02d}]"
 
+
     @property
     def document_id(self):
         return self.doc_id
 
-    def set_document_id(self, new_id):
+    def set_document_id(self, new_id: str):
         self.doc_id = new_id
 
         

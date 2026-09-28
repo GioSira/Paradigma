@@ -5,8 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "asyncpg>=0.31.0",
     "pinecone>=10.0.0",
-    "pydantic>=2.13.5",
+    "pydantic[email]>=2.13.5",
     "pytest>=9.1.1",
+    "sqlalchemy[asyncio]>=2.0.54",
     "ujson>=6.0.0",
 ]
