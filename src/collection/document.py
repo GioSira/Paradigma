@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, ConfigDict, AwareDatetime
+from pydantic import BaseModel, Field, ConfigDict, AwareDatetime, field_validator
 from datetime import datetime, timezone
 from typing import Optional, ClassVar
+from uuid import UUID, uuid4
 import ujson
 
 
@@ -9,19 +10,24 @@ class Document(BaseModel):
     # evita field vuoti
     model_config = ConfigDict(validate_assignment=True)
 
-    doc_id: str = Field(..., min_length=1, description="mandatory session ID")
+    doc_id: UUID
     name: str
     last_modified: Optional[datetime]
     text: Optional[str]
 
     DATE_FORMAT: ClassVar[str] = "[{d:02d}/{m:02d}/{y:04d} - {hh:02d}:{mm:02d}:{ss:02d}]"
 
+    @field_validator("doc_id", mode="before")   
+    @classmethod
+    def generate_if_missing(cls, v):
+        return uuid4() if v is None else v
+
 
     @property
     def document_id(self):
         return self.doc_id
 
-    def set_document_id(self, new_id: str):
+    def set_document_id(self, new_id: UUID):
         self.doc_id = new_id
 
         
@@ -73,7 +79,7 @@ class Document(BaseModel):
     def _json_payload(self):
         """Punto di estensione: le sottoclassi aggiungono qui i loro campi."""
         return {
-            "id": self.doc_id,
+            "id": str(self.doc_id),
             "name": self.name,
             "last_modified": (
                 self.last_modified.isoformat()

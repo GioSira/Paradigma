@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import uuid
 import pytest
 import ujson
 from hypothesis import given, strategies as st
@@ -7,17 +8,37 @@ from pydantic import ValidationError
 
 from src.collection.document import Document
 
-valid_ids = st.text(min_size=1, max_size=50)
-invalid_ids = st.just("")
+
+
+# ====================================== STRATEGIES ==================================
+
+
+def not_a_uuid(value):
+    try:
+        uuid.UUID(value)
+        return False
+    except (ValueError, AttributeError, TypeError):
+        return True
+
+
+valid_ids = st.uuids()
+invalid_ids = st.text(min_size=1).filter(not_a_uuid)
 messy_strings = st.text(min_size=1, max_size=1000)
 optional_strings = st.none() | messy_strings
 timestamps = st.datetimes()
 optional_timestamps = st.none() | timestamps
 
 
-def make_doc(doc_id="id", name="name", last_modified=None, text=None):
+def make_doc(doc_id, name="name", last_modified=None, text=None):
     """Tutti i campi sono obbligatori in Pydantic v2, anche gli Optional."""
+    if not doc_id:
+        doc_id = uuid.uuid4()
+        
     return Document(doc_id=doc_id, name=name, last_modified=last_modified, text=text)
+
+
+
+# ====================================== STRATEGIES ==================================
 
 
 class TestDocumentCreation:
@@ -105,7 +126,7 @@ class TestAccessors:
     def test_setters_do_not_touch_other_fields(self, docum_id, doc_name, doc_text):
         doc = make_doc(docum_id, doc_name, text=doc_text)
 
-        doc.set_document_id("nuovo-id")
+        doc.set_document_id(uuid.uuid4())
 
         assert doc.get_document_name() == doc_name
         assert doc.get_document_text() == doc_text
@@ -129,7 +150,7 @@ class TestLastModifiedFormatting:
 
     #@pytest.mark.xfail(strict=True, reason="stesso bug di isoformat()")
     def test_expected_format_is_day_first(self):
-        doc = make_doc(last_modified=datetime(2024, 3, 9, 14, 5, 6))
+        doc = make_doc(doc_id=None, last_modified=datetime(2024, 3, 9, 14, 5, 6))
 
         assert doc.format_last_modified() == "[09/03/2024 - 14:05:06]"
 
@@ -202,7 +223,7 @@ class TestSerialization:
 
         payload = ujson.loads(doc.to_json())
 
-        assert payload["id"] == docum_id
+        assert uuid.UUID(payload["id"]) == docum_id
         assert payload["name"] == doc_name
         assert payload["text"] == doc_text
         assert payload["last_modified"] is None

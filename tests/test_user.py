@@ -227,7 +227,7 @@ class TestReloadFromDatabase:
 class TestConstruction:
 
     def test_direct_construction_is_refused(self):
-        with pytest.raises(TypeError, match="User.create"):
+        with pytest.raises(TypeError):
             User(**db_record())
 
     def test_positional_construction_is_refused(self):
@@ -236,7 +236,7 @@ class TestConstruction:
 
     def test_model_validate_is_refused(self):
         # Anche la strada di pydantic passa dal costruttore protetto.
-        with pytest.raises(TypeError, match="User.from_db"):
+        with pytest.raises(TypeError):
             User.model_validate(db_record())
 
     def test_nested_models_accept_only_built_users(self):

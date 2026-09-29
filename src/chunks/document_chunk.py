@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator, model_valida
 from datetime import datetime
 from typing import Optional, ClassVar
 from src.collection.document import Document
+from uuid import UUID
 import ujson
 
 
@@ -11,9 +12,9 @@ class DocumentChunk(BaseModel):
     model_config = ConfigDict(validate_assignment=True, extra="forbid")
 
     # id del chunk
-    chunk_id: str =  Field(..., min_length=1, description="mandatory chunk ID")
+    chunk_id: UUID
     # id del documento originale
-    document_id: str = Field(..., min_length=1, description="mandatory document ID")
+    document_id: UUID
     last_modified: Optional[datetime]
     start_idx: int = Field(..., ge=0)
     end_idx: int = Field(..., ge=0)
@@ -65,7 +66,7 @@ class DocumentChunk(BaseModel):
     def get_document_id(self):
         return self.document_id
  
-    def set_document_id(self, document_id):
+    def set_document_id(self, document_id: UUID):
         self.document_id = document_id
  
     def get_start_index(self):
@@ -140,8 +141,8 @@ class DocumentChunk(BaseModel):
 
     def _json_payload(self):
         return {
-            "chunk_id": self.chunk_id,
-            "document_id": self.document_id,
+            "chunk_id": str(self.chunk_id),
+            "document_id": str(self.document_id),
             "start_index": self.start_idx,
             "end_index": self.end_idx,
             "last_modified": (

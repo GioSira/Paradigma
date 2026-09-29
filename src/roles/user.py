@@ -9,8 +9,6 @@ import ujson
 
 
 PH = PasswordHasher()
-
-# Chiave privata del modulo: solo i metodi di costruzione della classe la conoscono.
 _FACTORY_KEY = object()
 
 
@@ -32,18 +30,20 @@ class User(BaseModel):
 
     DATE_FORMAT: ClassVar[str] = "[{d:02d}/{m:02d}/{y:04d} - {hh:02d}:{mm:02d}:{ss:02d}]"
 
-    def __init__(self, *, _key: object = None, **data):
-        if _key is not _FACTORY_KEY:
-            raise TypeError("Non costruire User direttamente: usa User.create(...) per "
-                            "registrare un utente o User.from_db(...) per caricarlo dal database")
+    def __init__(self, **data):
         super().__init__(**data)
 
 
     # ----------------------------- COSTRUZIONE -----------------------------
 
+    def __init__(self, *, _key: object = None, **data):
+        if _key is not _FACTORY_KEY:
+            raise TypeError("Non costruire User direttamente: usa create() o from_db()")
+        super().__init__(**data)
+
     @classmethod
     def create(cls, user_id: UUID, name: str, surname: str, email: str, password: str,
-               created_at: Optional[datetime] = None) -> "User":
+               created_at: Optional[datetime] = None, **fields: Any) -> "User":
         """Registrazione di un nuovo utente, a partire dalla password in chiaro.
 
         Per ricaricare un utente dal database si usa invece il costruttore,
@@ -57,6 +57,7 @@ class User(BaseModel):
             email=email,
             password_hash=PH.hash(password),
             created_at=created_at or datetime.now(timezone.utc),
+            **fields
         )
 
 

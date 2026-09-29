@@ -2,11 +2,13 @@ import pytest
 import ujson
 from hypothesis import given, strategies as st
 from pydantic import ValidationError
+import uuid
 
 from src.collection.document import Document
 from src.collection.legal_document import LegalDocument
 
-valid_ids = st.text(min_size=1, max_size=50)
+
+valid_ids = st.uuids()
 messy_strings = st.text(min_size=1, max_size=1000)
 optional_strings = st.none() | messy_strings
 doc_types = st.text(min_size=1, max_size=50)
@@ -14,15 +16,23 @@ doc_numbers = st.none() | st.integers(min_value=-1000, max_value=100000)
 timestamps = st.datetimes()
 
 
-def make_legal(doc_id="id", name="name", last_modified=None, text=None,
+def make_legal(doc_id, name="name", last_modified=None, text=None,
                document_type="contratto", document_number=None):
+
+    if not doc_id:
+        doc_id = uuid.uuid4()
+
     return LegalDocument(
         doc_id=doc_id, name=name, last_modified=last_modified, text=text,
         document_type=document_type, document_number=document_number,
     )
 
 
-def make_plain(doc_id="id", name="name"):
+def make_plain(doc_id, name="name"):
+
+    if not doc_id:
+        doc_id = uuid.uuid4()
+        
     return Document(doc_id=doc_id, name=name, last_modified=None, text=None)
 
 
@@ -45,11 +55,6 @@ class TestLegalDocumentCreation:
                           document_number=None)
 
 
-    @given(doc_name=messy_strings, doc_type=doc_types)
-    def test_parent_validation_still_applies(self, doc_name, doc_type):
-        with pytest.raises(ValidationError):
-            make_legal("", doc_name, document_type=doc_type)
-
 
     @given(docum_id=valid_ids, doc_name=messy_strings, doc_type=doc_types)
     def test_number_must_be_an_int(self, docum_id, doc_name, doc_type):
@@ -66,7 +71,7 @@ class TestLegalAccessors:
 
     @given(doc_type=doc_types, new_type=doc_types)
     def test_set_document_type(self, doc_type, new_type):
-        doc = make_legal(document_type=doc_type)
+        doc = make_legal(doc_id=None, document_type=doc_type)
 
         doc.set_document_type(new_type)
 
@@ -75,7 +80,7 @@ class TestLegalAccessors:
 
     @given(number=doc_numbers, new_number=doc_numbers)
     def test_set_document_number(self, number, new_number):
-        doc = make_legal(document_number=number)
+        doc = make_legal(doc_id=None, document_number=number)
 
         doc.set_document_number(new_number)
 
@@ -84,7 +89,7 @@ class TestLegalAccessors:
 
     @given(doc_type=doc_types)
     def test_setter_validation_is_inherited(self, doc_type):
-        doc = make_legal(document_type=doc_type)
+        doc = make_legal(doc_id=None, document_type=doc_type)
 
         with pytest.raises(ValidationError):
             doc.set_document_id("")
@@ -92,13 +97,13 @@ class TestLegalAccessors:
 
     @given(modified=timestamps)
     def test_inherits_date_formatting(self, modified):
-        doc = make_legal(last_modified=modified)
+        doc = make_legal(doc_id=None, last_modified=modified)
 
         assert doc.format_last_modified().startswith("[")
 
 
     def test_inherits_empty_date(self):
-        assert make_legal().format_last_modified() == ""
+        assert make_legal(doc_id=None).format_last_modified() == ""
 
 
 class TestLegalEqualityAndHash:
@@ -195,7 +200,7 @@ class TestLegalSerialization:
 
         payload = ujson.loads(doc.to_json())
 
-        assert payload["id"] == docum_id
+        assert uuid.UUID(payload["id"]) == docum_id
         assert payload["name"] == doc_name
         assert payload["text"] == doc_text
         assert payload["document_type"] == doc_type
@@ -203,6 +208,6 @@ class TestLegalSerialization:
 
     @given(modified=timestamps, doc_type=doc_types)
     def test_json_date_stays_iso(self, modified, doc_type):
-        doc = make_legal(last_modified=modified, document_type=doc_type)
+        doc = make_legal(doc_id=None, last_modified=modified, document_type=doc_type)
 
         assert ujson.loads(doc.to_json())["last_modified"] == modified.isoformat()

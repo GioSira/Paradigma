@@ -75,7 +75,7 @@ texts = st.text(alphabet=TEXT_ALPHABET, min_size=1, max_size=150).filter(
 )
 text_lists = st.lists(texts, min_size=1, max_size=6)
 # Gli id finiscono negli id dei record: solo caratteri ASCII sicuri.
-document_ids = st.from_regex(r"[a-z][a-z0-9-]{0,20}", fullmatch=True)
+document_ids = st.uuids() #st.from_regex(r"[a-z][a-z0-9-]{0,20}", fullmatch=True)
 dates = st.none() | st.datetimes(min_value=datetime(2000, 1, 1),
                                  max_value=datetime(2100, 1, 1))
 unit_floats = st.floats(min_value=-1, max_value=1, allow_nan=False, width=32)
@@ -88,9 +88,9 @@ vectors = st.lists(unit_floats, min_size=VECTOR_DIMENSION, max_size=VECTOR_DIMEN
 
 def make_chunks(document_id, chunk_texts, last_modified=None):
     chunks, start = [], 0
-    for position, text in enumerate(chunk_texts):
+    for _, text in enumerate(chunk_texts):
         chunks.append(DocumentChunk(
-            chunk_id=f"{document_id}#{position}", document_id=document_id,
+            chunk_id=uuid.uuid4(), document_id=document_id,
             last_modified=last_modified, start_idx=start, end_idx=start + len(text), text=text,
         ))
         start += len(text)
@@ -355,9 +355,9 @@ class TestSearchDocument:
             assert is_descending(hit_scores(response))
 
     @LIVE
-    @given(texts_a=text_lists, texts_b=text_lists)
-    def test_filter_restricts_to_one_document(self, db, index_name, texts_a, texts_b):
-        chunks_a, chunks_b = make_chunks("doc-a", texts_a), make_chunks("doc-b", texts_b)
+    @given(texts_a=text_lists, texts_b=text_lists, doc_a_id=document_ids, doc_b_ids=document_ids)
+    def test_filter_restricts_to_one_document(self, db, index_name, doc_a_id, doc_b_id, texts_a, texts_b):
+        chunks_a, chunks_b = make_chunks(doc_a_id, texts_a), make_chunks(doc_b_id, texts_b)
         total = len(chunks_a) + len(chunks_b)
 
         with fresh_namespace(db, index_name) as namespace:
@@ -365,7 +365,7 @@ class TestSearchDocument:
             wait_searchable(db, index_name, namespace, total)
 
             response = db.search_document(index_name, namespace, "documento", top_k=total,
-                                          filter={"document_id": {"$eq": "doc-a"}})
+                                          filter={"document_id": {"$eq": doc_a_id}})
 
             assert sorted(hit_ids(response)) == sorted(c.chunk_id for c in chunks_a)
 
@@ -558,7 +558,7 @@ class TestChunkToRecord:
     def test_record_shape(self, db, document_id, text, last_modified):
         chunk = make_chunks(document_id, [text], last_modified)[0]
 
-        expected = {"_id": chunk.chunk_id, db._field_value: text, "document_id": document_id,
+        expected = {"_id": str(chunk.chunk_id), db._field_value: text, "document_id": document_id,
                     "start_index": 0, "end_index": len(text)}
         if last_modified is not None:
             expected["last_modified"] = last_modified.isoformat()
