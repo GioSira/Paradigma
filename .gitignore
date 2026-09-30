@@ -16,6 +16,7 @@ wheels/
 .pytest_cache
 .python-version
 docker-compose.yml
+memgraph-platform/
 
 
 # security

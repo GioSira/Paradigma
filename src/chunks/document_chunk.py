@@ -101,12 +101,11 @@ class DocumentChunk(BaseModel):
     def set_chunk_text(self, text):
         self._assign("text", text)
 
-    @classmethod
-    def build_chunck_id(self) -> str:
+    def build_chunk_id(self) -> str:
         """
         For Redis DB in the future
         """
-        return f"{self.document_id}/{self.chunk_id}/{str(self.start_idx)}-{str(self.end_idx)}"
+        return f"{str(self.document_id)}/{str(self.chunk_id)}/{str(self.start_idx)}-{str(self.end_idx)}"
 
     def belong_to(self, document: Document) -> bool:
         return self.document_id == document.document_id

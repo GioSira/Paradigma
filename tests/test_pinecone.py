@@ -11,6 +11,10 @@ Con PINECONE_TEST_CLEANUP=1 vengono cancellati a fine sessione.
 Ogni test scrive in un namespace nuovo, cancellato alla fine, quindi i test
 non si influenzano tra loro e l'indice resta vuoto.
 
+Nota sugli id: DocumentChunk usa UUID, ma su Pinecone id dei record e
+metadati sono stringhe. Tutto cio' che si confronta con risposte di Pinecone
+(id dei hit, fetch, filtri, metadati) passa quindi per str(...).
+
 Esempi:
     pytest tests/test_pinecone_db.py               # tutti
     pytest tests/test_pinecone_db.py -m "not slow" # senza creare indici temporanei
@@ -26,13 +30,14 @@ from datetime import datetime
 
 import pytest
 from dotenv import load_dotenv
-from hypothesis import HealthCheck, Phase, example, given, settings, strategies as st
+from hypothesis import HealthCheck, Phase, assume, example, given, settings, strategies as st
 from pinecone import ServerlessSpec
 
-# Stesso percorso usato da pinecone_db: importando da un percorso diverso
-# (es. src.chunks...) Python carica la classe due volte e i chunk non
-# risultano mai uguali, perche' __eq__ fa isinstance su due classi distinte.
+# Stessi percorsi usati da pinecone_db: importando la stessa classe da un
+# percorso diverso Python la caricherebbe due volte e i chunk non
+# risulterebbero mai uguali, perche' __eq__ fa isinstance su due classi distinte.
 from src.chunks.document_chunk import DocumentChunk
+from src.collection.document import Document
 from src.vectordb.pinecone_db import IndexMode, PineconeDB
 
 load_dotenv()
@@ -74,8 +79,7 @@ texts = st.text(alphabet=TEXT_ALPHABET, min_size=1, max_size=150).filter(
     lambda s: s.strip() != ""
 )
 text_lists = st.lists(texts, min_size=1, max_size=6)
-# Gli id finiscono negli id dei record: solo caratteri ASCII sicuri.
-document_ids = st.uuids() #st.from_regex(r"[a-z][a-z0-9-]{0,20}", fullmatch=True)
+document_ids = st.uuids()
 dates = st.none() | st.datetimes(min_value=datetime(2000, 1, 1),
                                  max_value=datetime(2100, 1, 1))
 unit_floats = st.floats(min_value=-1, max_value=1, allow_nan=False, width=32)
@@ -88,13 +92,26 @@ vectors = st.lists(unit_floats, min_size=VECTOR_DIMENSION, max_size=VECTOR_DIMEN
 
 def make_chunks(document_id, chunk_texts, last_modified=None):
     chunks, start = [], 0
-    for _, text in enumerate(chunk_texts):
+    for text in chunk_texts:
         chunks.append(DocumentChunk(
             chunk_id=uuid.uuid4(), document_id=document_id,
             last_modified=last_modified, start_idx=start, end_idx=start + len(text), text=text,
         ))
         start += len(text)
     return chunks
+
+
+def make_document(document_id, name="documento di prova"):
+    return Document(doc_id=document_id, name=name, last_modified=None, text=None)
+
+
+def chunk_ids(chunks):
+    """Id dei chunk come li salva Pinecone (stringhe)."""
+    return {str(chunk.chunk_id) for chunk in chunks}
+
+
+def doc_filter(document_id):
+    return {"document_id": {"$eq": str(document_id)}}
 
 
 def hit_ids(response):
@@ -136,7 +153,7 @@ def wait_searchable(db, index_name, namespace, count):
 
 def fetched_ids(db, index_name, namespace, ids):
     index = db._client.Index(name=index_name)
-    return set(index.fetch(ids=list(ids), namespace=namespace).vectors)
+    return set(index.fetch(ids=[str(i) for i in ids], namespace=namespace).vectors)
 
 
 @contextmanager
@@ -309,9 +326,8 @@ class TestInsertChunks:
         with fresh_namespace(db, index_name) as namespace:
             assert db.insert_chunks(index_name, namespace, chunks) is True
 
-            ids = [chunk.chunk_id for chunk in chunks]
-            wait_for(lambda: fetched_ids(db, index_name, namespace, ids),
-                     lambda found: found == set(ids))
+            wait_for(lambda: fetched_ids(db, index_name, namespace, chunk_ids(chunks)),
+                     lambda found: found == chunk_ids(chunks))
 
     @LIVE
     @given(document_id=document_ids, first=text_lists, replacement=texts)
@@ -351,12 +367,14 @@ class TestSearchDocument:
             response = db.search_document(index_name, namespace, chunk_texts[0], top_k=top_k)
 
             assert len(response.result.hits) == top_k
-            assert set(hit_ids(response)) <= {chunk.chunk_id for chunk in chunks}
+            assert set(hit_ids(response)) <= chunk_ids(chunks)
             assert is_descending(hit_scores(response))
 
     @LIVE
-    @given(texts_a=text_lists, texts_b=text_lists, doc_a_id=document_ids, doc_b_ids=document_ids)
-    def test_filter_restricts_to_one_document(self, db, index_name, doc_a_id, doc_b_id, texts_a, texts_b):
+    @given(doc_a_id=document_ids, doc_b_id=document_ids, texts_a=text_lists, texts_b=text_lists)
+    def test_filter_restricts_to_one_document(self, db, index_name, doc_a_id, doc_b_id,
+                                              texts_a, texts_b):
+        assume(doc_a_id != doc_b_id)
         chunks_a, chunks_b = make_chunks(doc_a_id, texts_a), make_chunks(doc_b_id, texts_b)
         total = len(chunks_a) + len(chunks_b)
 
@@ -365,9 +383,9 @@ class TestSearchDocument:
             wait_searchable(db, index_name, namespace, total)
 
             response = db.search_document(index_name, namespace, "documento", top_k=total,
-                                          filter={"document_id": {"$eq": doc_a_id}})
+                                          filter=doc_filter(doc_a_id))
 
-            assert sorted(hit_ids(response)) == sorted(c.chunk_id for c in chunks_a)
+            assert set(hit_ids(response)) == chunk_ids(chunks_a)
 
     def test_missing_index_returns_none_without_creating_it(self, db):
         missing = temporary_index_name()
@@ -382,20 +400,19 @@ class TestSearchByIndex:
     @given(document_id=document_ids, chunk_texts=st.lists(texts, min_size=2, max_size=6))
     def test_record_is_its_own_best_match(self, db, index_name, document_id, chunk_texts):
         chunks = make_chunks(document_id, chunk_texts)
-        target = chunks[0]
+        target_id = str(chunks[0].chunk_id)
 
         with fresh_namespace(db, index_name) as namespace:
             db.insert_chunks(index_name, namespace, chunks)
             wait_searchable(db, index_name, namespace, len(chunks))
 
-            response = db.search_by_index(index_name, namespace, target.chunk_id,
-                                          top_k=len(chunks))
+            response = db.search_by_index(index_name, namespace, target_id, top_k=len(chunks))
 
             scores = {match.id: match.score for match in response.matches}
             assert len(scores) == len(chunks)
             # Testi uguali danno lo stesso vettore: si confronta lo score, non la posizione.
-            assert scores[target.chunk_id] == pytest.approx(max(scores.values()), abs=1e-4)
-            assert response.matches[0].metadata["document_id"] == document_id
+            assert scores[target_id] == pytest.approx(max(scores.values()), abs=1e-4)
+            assert response.matches[0].metadata["document_id"] == str(document_id)
 
     def test_missing_index_returns_none_without_creating_it(self, db):
         missing = temporary_index_name()
@@ -419,13 +436,16 @@ class TestSearchDocumentAndRerank:
                                                      top_k=len(chunks), rerank_model=RERANK_MODEL)
 
             assert len(response.result.hits) == max(1, len(chunks) // 2)
-            assert set(hit_ids(response)) <= {chunk.chunk_id for chunk in chunks}
+            assert set(hit_ids(response)) <= chunk_ids(chunks)
             assert is_descending(hit_scores(response))
 
     @LIVE
-    @given(texts_a=st.lists(texts, min_size=2, max_size=5), texts_b=text_lists, data=st.data())
-    def test_explicit_top_n_and_filter(self, db, index_name, texts_a, texts_b, data):
-        chunks_a, chunks_b = make_chunks("doc-a", texts_a), make_chunks("doc-b", texts_b)
+    @given(doc_a_id=document_ids, doc_b_id=document_ids,
+           texts_a=st.lists(texts, min_size=2, max_size=5), texts_b=text_lists, data=st.data())
+    def test_explicit_top_n_and_filter(self, db, index_name, doc_a_id, doc_b_id,
+                                       texts_a, texts_b, data):
+        assume(doc_a_id != doc_b_id)
+        chunks_a, chunks_b = make_chunks(doc_a_id, texts_a), make_chunks(doc_b_id, texts_b)
         top_n = data.draw(st.integers(min_value=1, max_value=len(chunks_a)), label="top_n")
 
         with fresh_namespace(db, index_name) as namespace:
@@ -434,11 +454,11 @@ class TestSearchDocumentAndRerank:
 
             response = db.search_document_and_rerank(
                 index_name, namespace, texts_a[0], top_k=len(chunks_a), top_n=top_n,
-                filter={"document_id": {"$eq": "doc-a"}}, rerank_model=RERANK_MODEL,
+                filter=doc_filter(doc_a_id), rerank_model=RERANK_MODEL,
             )
 
             assert len(response.result.hits) == top_n
-            assert set(hit_ids(response)) <= {chunk.chunk_id for chunk in chunks_a}
+            assert set(hit_ids(response)) <= chunk_ids(chunks_a)
 
     def test_top_n_out_of_range_is_rejected(self, db, index_name):
         with pytest.raises(ValueError):
@@ -501,11 +521,12 @@ class TestSearchChunks:
 
             assert len(results) == len(chunks)
             for chunk, score in results:
-                original = by_id[chunk.chunk_id]
+                original = by_id[chunk.chunk_id]  # chunk_id torna UUID, non stringa
                 assert chunk == original
-                assert (chunk.text, chunk.start_idx, chunk.end_idx, chunk.last_modified) == \
-                       (original.text, original.start_idx, original.end_idx,
-                        original.last_modified)
+                assert (chunk.document_id, chunk.text, chunk.start_idx, chunk.end_idx,
+                        chunk.last_modified) == \
+                       (original.document_id, original.text, original.start_idx,
+                        original.end_idx, original.last_modified)
                 assert isinstance(score, float)
 
     @LIVE
@@ -530,6 +551,40 @@ class TestSearchChunks:
 
         assert db.search_chunks(missing, "ns", "q") == []
         assert not db._client.has_index(missing)
+
+
+class TestSearchChunksOfDocument:
+
+    @LIVE
+    @given(doc_a_id=document_ids, doc_b_id=document_ids, texts_a=text_lists, texts_b=text_lists)
+    def test_only_chunks_of_the_document_are_returned(self, db, index_name, doc_a_id, doc_b_id,
+                                                      texts_a, texts_b):
+        assume(doc_a_id != doc_b_id)
+        document = make_document(doc_a_id)
+        chunks_a, chunks_b = make_chunks(doc_a_id, texts_a), make_chunks(doc_b_id, texts_b)
+        total = len(chunks_a) + len(chunks_b)
+
+        with fresh_namespace(db, index_name) as namespace:
+            db.insert_chunks(index_name, namespace, chunks_a + chunks_b)
+            wait_searchable(db, index_name, namespace, total)
+
+            results = db.search_chunks_of_document(index_name, namespace, "documento",
+                                                   document, top_k=total)
+
+            found = [chunk for chunk, _ in results]
+            assert set(found) == set(chunks_a)
+            assert all(chunk.belong_to(document) for chunk in found)
+
+    def test_unknown_document_returns_no_chunks(self, db, index_name):
+        document = make_document(uuid.uuid4())
+        chunks = make_chunks(uuid.uuid4(), ["un documento qualsiasi"])
+
+        with fresh_namespace(db, index_name) as namespace:
+            db.insert_chunks(index_name, namespace, chunks)
+            wait_searchable(db, index_name, namespace, len(chunks))
+
+            assert db.search_chunks_of_document(index_name, namespace, "documento",
+                                                document) == []
 
 
 # ================================================ funzioni senza rete ================================================
@@ -558,9 +613,31 @@ class TestChunkToRecord:
     def test_record_shape(self, db, document_id, text, last_modified):
         chunk = make_chunks(document_id, [text], last_modified)[0]
 
-        expected = {"_id": str(chunk.chunk_id), db._field_value: text, "document_id": document_id,
+        expected = {"_id": str(chunk.chunk_id), db._field_value: text,
+                    "document_id": str(document_id),
                     "start_index": 0, "end_index": len(text)}
         if last_modified is not None:
             expected["last_modified"] = last_modified.isoformat()
 
         assert db._chunk_to_record(chunk) == expected
+
+
+class TestHitToChunk:
+
+    @PURE
+    @given(document_id=document_ids, text=texts, last_modified=dates, legacy=st.booleans())
+    def test_record_round_trips_to_the_same_chunk(self, db, document_id, text, last_modified,
+                                                  legacy):
+        chunk = make_chunks(document_id, [text], last_modified)[0]
+
+        # Simula un hit come lo restituisce Pinecone: id stringa, numeri come float.
+        fields = db._chunk_to_record(chunk)
+        record_id = fields.pop("_id")
+        fields["start_index"] = float(fields["start_index"])
+        fields["end_index"] = float(fields["end_index"])
+        hit = {"_id": record_id, "_fields": fields} if legacy else {"id": record_id, "fields": fields}
+
+        restored = db.hit_to_chunk(hit)
+
+        assert restored == chunk
+        assert restored.model_dump() == chunk.model_dump()

@@ -10,12 +10,13 @@ class Document(BaseModel):
     # evita field vuoti
     model_config = ConfigDict(validate_assignment=True)
 
-    doc_id: UUID
+    doc_id: UUID = Field(default_factory=uuid4)
     name: str
     last_modified: Optional[datetime]
     text: Optional[str]
 
     DATE_FORMAT: ClassVar[str] = "[{d:02d}/{m:02d}/{y:04d} - {hh:02d}:{mm:02d}:{ss:02d}]"
+
 
     @field_validator("doc_id", mode="before")   
     @classmethod

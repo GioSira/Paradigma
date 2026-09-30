@@ -3,7 +3,9 @@ from dotenv import load_dotenv
 from typing import List, Dict, Any, Sequence, Iterator, Iterable, Optional, Mapping, Tuple, Union
 from datetime import datetime
 from src.chunks.document_chunk import DocumentChunk
+from src.collection.document import Document
 from enum import Enum, auto
+from uuid import UUID
 
 
 class IndexMode(Enum):
@@ -106,8 +108,6 @@ class PineconeDB:
         raise NotImplementedError("La modalita' ibrida BM25 non e' ancora implementata")
 
 
-    # ------------------------------- LETTURA ----------------------------
-
     @staticmethod
     def _batches(items: Sequence[Any], size: int = 16) -> Iterator[Sequence[Any]]:
 
@@ -163,7 +163,7 @@ class PineconeDB:
                       create_if_missing: bool = True) -> bool:
         
         """Inserisce i chunk. A parita' di identita' vince l'ultimo: nessun upsert doppio."""
-        unique = {chunk: chunk for chunk in chunks}
+        unique = {chunk.get_chunk_id(): chunk for chunk in chunks}
         records = [self._chunk_to_record(chunk) for chunk in unique.values()]
  
         return self.insert_documents(index_name, namespace, records, create_if_missing)
@@ -327,13 +327,13 @@ class PineconeDB:
         last_modified = fields.get("last_modified")
     
         return DocumentChunk(
-            chunk_id= self._read(hit, "id", "_id"),
-            document_id=fields["document_id"],
+            chunk_id = UUID(self._read(hit, "id", "_id")),
+            document_id = UUID(fields["document_id"]),
             # Pinecone salva i numeri dei metadati come float.
-            start_idx=int(fields["start_index"]),
-            end_idx=int(fields["end_index"]),
-            last_modified=datetime.fromisoformat(last_modified) if last_modified else None,
-            text=fields[self._field_value],
+            start_idx = int(fields["start_index"]),
+            end_idx = int(fields["end_index"]),
+            last_modified = datetime.fromisoformat(last_modified) if last_modified else None,
+            text = fields[self._field_value],
         )
 
             
@@ -359,6 +359,17 @@ class PineconeDB:
                 return [(self.hit_to_chunk(hit), float(self._read(hit, "score", "_score"))) for hit in response.result.hits]
 
         return []
+
+
+    def search_chunks_of_document(self, index_name: str, namespace: str, 
+                                  query: str, document: Document, **kwargs) -> List[Tuple[DocumentChunk, float]]:
+
+        extra = kwargs.pop("filter", None)
+        doc_filter = {"document_id": {"$eq": str(document.document_id)}}
+        if extra:
+            doc_filter = {"$and": [doc_filter, dict(extra)]}
+
+        return self.search_chunks(index_name, namespace, query, filter=doc_filter, **kwargs)
 
         
 if __name__ == "__main__":
