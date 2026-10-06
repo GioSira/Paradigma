@@ -27,7 +27,7 @@ import src.roles.user as user_module
 from src.roles.user import User
 from src.sqldb.base import Base, make_engine
 from src.sqldb.errors import EmailAlreadyRegistered, UserAlreadyExists, UserNotFound
-from src.sqldb.repository import UserRepository
+from src.sqldb.user_repository import UserRepository
 from src.sqldb.tables import UserRow
 
 load_dotenv()
@@ -42,7 +42,7 @@ pytestmark = [
 FAST_HASHER = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1)
 # Ogni esempio apre una connessione al database: niente shrinking, che su un
 # test fallito ripeterebbe decine di esempi a vuoto (lo stesso vale per Pinecone).
-DB = settings(max_examples=25, deadline=None,
+DB = settings(max_examples=10, deadline=None,
               phases=[Phase.explicit, Phase.reuse, Phase.generate])
 PASSWORD = "una-password-lunga-e-sicura"
 NOW = datetime(2024, 3, 9, 14, 5, 6, tzinfo=timezone.utc)

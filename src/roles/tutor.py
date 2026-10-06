@@ -1,4 +1,5 @@
 from src.roles.user import User
+from src.corsi.corso import Corso
 from pydantic import Field, field_validator
 from typing import Optional, List, Any
 from uuid import UUID
@@ -8,16 +9,17 @@ from datetime import datetime, timezone
 class Tutor(User):
 
 
-    title: str
-    bio: Optional[str]
-    subjects: List[str] = Field(..., min_length=1)
+    title: str = Field(..., min_length=1)
+    bio: Optional[str] = Field(..., min_length=1)
+    subjects: List[str]
+    corso: List[Corso]
 
 
     # ----------------------------- COSTRUZIONE -----------------------------
 
     @classmethod
     def create(cls, user_id: UUID, name: str, surname: str, email: str, password: str,
-               tutor_title: str, subjects: List[str],
+               tutor_title: str, subjects: List[str], corso: List[Corso] = [],
                bio: Optional[str] = None, created_at: Optional[datetime] = None) -> "Tutor":
         """Registrazione di un nuovo utente, a partire dalla password in chiaro.
 
@@ -33,7 +35,8 @@ class Tutor(User):
             created_at=created_at or datetime.now(timezone.utc),
             title=tutor_title,
             subjects=subjects,
-            bio=bio
+            bio=bio,
+            corso = corso,
         )
 
 
@@ -125,7 +128,7 @@ class Tutor(User):
 
         for subject in subjects:
             v = subject.strip().casefold()
-            if v and v not in seen:
+            if v and len(v) > 0 and v != " " and v not in seen:
                 seen.add(v)
                 unique.append(subject)
                 flag = True

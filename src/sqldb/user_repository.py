@@ -36,29 +36,43 @@ class UserRepository:
         self._session = session
 
 
+    # ================================= GENERAL FUNCTION ==============================
+
+    def _select(self):
+
+        return select(_USERS)
+
+
+    def _order(self):
+
+        return (
+            _USERS.c.surname, _USERS.c.name, _USERS.c.user_id
+        )
+
+
     # ============================ LETTURA ========================
 
     async def get_by_id(self, user_id:UUID) -> Optional[User]:
 
-        query = select(_USERS).where(_USERS.c.user_id == user_id)
+        query = self._select().where(_USERS.c.user_id == user_id)
         return await self._fetch_one(query)
 
 
     async def get_by_email(self, user_email: str) -> Optional[User]:
 
-        query = select(_USERS).where(func.lower(_USERS.c.email) == user_email.lower())
+        query = self._select().where(func.lower(_USERS.c.email) == user_email.lower())
         return await self._fetch_one(query)
 
 
     async def get_by_name(self, user_name: str) -> List[User]:
 
-        query = select(_USERS).where(_USERS.c.name == user_name).order_by(_USERS.c.name, _USERS.c.surname, _USERS.c.user_id)
+        query = self._select().where(_USERS.c.name == user_name).order_by(*self._order())
         return await self._fetch_all(query)
 
 
     async def get_by_surname(self, user_surname: str) -> List[User]:
     
-        query = select(_USERS).where(_USERS.c.surname == user_surname).order_by(_USERS.c.surname, _USERS.c.name, _USERS.c.user_id)
+        query = self._select().where(_USERS.c.surname == user_surname).order_by(*self._order())
         return await self._fetch_all(query)
 
 
@@ -67,16 +81,16 @@ class UserRepository:
 
     async def add(self, user: User) -> None:
 
-        query = insert(_USERS).values(**self._to_row(user))
-        await self._write(query, user)
+        statement = insert(_USERS).values(**self._to_row(user))
+        await self._write(statement, user)
 
 
     async def update(self, user: User) -> None:
 
         values = self._to_row(user, for_update=True)
-        query = update(_USERS).where(_USERS.c.user_id == user.get_user_id()).values(**values)
+        statement = update(_USERS).where(_USERS.c.user_id == user.get_user_id()).values(**values)
 
-        result = await self._write(query, user)
+        result = await self._write(statement, user)
 
         if result.rowcount == 0:
             raise UserNotFound(user.get_user_id())
@@ -84,8 +98,8 @@ class UserRepository:
 
     async def delete(self, user_id: UUID) -> bool:
 
-        query = delete(_USERS).where(_USERS.c.user_id == user_id)
-        result = await self._session.execute(query)
+        statement = delete(_USERS).where(_USERS.c.user_id == user_id)
+        result = await self._session.execute(statement)
 
         return result.rowcount == 1
 
@@ -94,30 +108,42 @@ class UserRepository:
     # ============================ UTILS ========================
 
 
+    def _from_db(self, row: dict) -> User:
+        """Converte una riga nell'oggetto di dominio: le sottoclassi lo ridefiniscono."""
+        return User.from_db(row)
+
+
     async def _fetch_one(self, query) -> Optional[User]:
 
         row = (await self._session.execute(query)).mappings().one_or_none()
 
-        return User.from_db(dict(row)) if row else None
+        return self._from_db(dict(row)) if row else None
 
 
     async def _fetch_all(self, query) -> List[User]:
 
         rows = (await self._session.execute(query)).mappings().all()
-        return [User.from_db(dict(row)) for row in rows]
+        return [self._from_db(dict(row)) for row in rows]
 
 
 
     async def _write(self, query, user: User):
 
-        try: 
+        result = await self._write_all(user, query)
+        return result[0]
+
+
+
+    async def _write_all(self, user: User, *quieries) -> list:
+
+        try:
             async with self._session.begin_nested():
-                return await self._session.execute(query)
+                return [await self._session.execute(query) for query in quieries]
         except IntegrityError as error:
             domain_error = self._domain_error(error, user)
             if domain_error is None:
                 raise
-            raise domain_error from error 
+            raise domain_error from error
 
 
     @staticmethod

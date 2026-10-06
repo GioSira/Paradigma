@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "asyncpg>=0.31.0",
+    "dotenv>=0.9.9",
+    "hypothesis>=6.168.3",
     "pinecone>=10.0.0",
     "pydantic[email]>=2.13.5",
     "pytest>=9.1.1",

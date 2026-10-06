@@ -26,3 +26,4 @@ memgraph-platform/
 graphdb/
 graphdb/__init__.py
 graphdb/db.py
+cache/
