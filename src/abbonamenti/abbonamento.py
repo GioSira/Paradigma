@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Mapping, Any
 from pydantic import BaseModel, Field, AwareDatetime
 from uuid import UUID
 from datetime import datetime
@@ -100,3 +100,8 @@ class Abbonamento(BaseModel):
             "inizio": self.inizio.isoformat(),
             "fine": self.fine.isoformat()
         }
+
+
+    @staticmethod
+    def from_db(cls, record: Mapping[str, Any]) -> "Abbonamento":
+        return cls(**record)
