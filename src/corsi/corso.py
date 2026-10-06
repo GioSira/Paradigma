@@ -4,6 +4,8 @@ from src.roles.tutor import Tutor
 from uuid import UUID
 from datetime import datetime, timezone
 
+import ujson
+
 
 class Corso(BaseModel):
 
@@ -107,5 +109,5 @@ class Corso(BaseModel):
 
 
     def to_json(self):
-        return self._json_payload()
+        return ujson.dumps(self._json_payload())
     
