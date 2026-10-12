@@ -1,32 +1,16 @@
-from typing import Any, Dict, Optional, List
+from typing import Optional, List
 from uuid import UUID
  
 from sqlalchemy import delete, func, insert, select, update
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
  
 from src.sqldb.tables import USERS_EMAIL_UNIQUE, UserRow
-from src.sqldb.errors import EmailAlreadyRegistered, UserAlreadyExists, UserNotFound
+from src.sqldb.errors import EmailAlreadyRegistered, UserAlreadyExists, UserNotFound, _constraint_name, IntegrityError
 from src.roles.user import User
  
  
 _USERS = UserRow.__table__
 _USERS_PRIMARY_KEY = "pk_users"
-
-
-
-
-def _constraint_name(error: IntegrityError):
-
-    original = error.orig
-    # asyncpg: l'eccezione originale e' la causa di quella adattata da SQLAlchemy.
-    name = getattr(getattr(original, "__cause__", None), "constraint_name", None)
-    
-    if name is None:
-        # psycopg (versione sincrona): il nome sta nella diagnostica.
-        name = getattr(getattr(original, "diag", None), "constraint_name", None)
-
-    return name
 
 
 class UserRepository:

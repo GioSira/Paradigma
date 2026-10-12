@@ -1,5 +1,5 @@
 from src.sqldb.tables import StudentRow, CorsoRow, UserRow, ISCRIZIONE
-from src.sqldb.user_repository import UserRepository, _constraint_name
+from src.sqldb.repository.user_repository import UserRepository, _constraint_name
 
 from src.roles.student import Student
 from src.corsi.corso import Corso
@@ -7,7 +7,7 @@ from src.corsi.corso import Corso
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import delete, func, insert, select, update, and_, exists, literal, true
+from sqlalchemy import delete, func, insert, select, update, true
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -33,7 +33,7 @@ _STUDENT_PRIMARY_KEY = "pk_student"
 
 class StudentRepository(UserRepository):
 
-    def __init__(self, session):
+    def __init__(self, session: AsyncSession):
         super().__init__(session)
 
 
@@ -131,7 +131,7 @@ class StudentRepository(UserRepository):
 
         rows = (await self._session.execute(*query)).mappings().all()
 
-        return [Corso.from_db(row) for row in rows]
+        return [Corso.from_db(**row) for row in rows]
 
 
     async def get_enrolled_students(self, corso_id: UUID):

@@ -52,8 +52,8 @@ class StudentRow(UserRow):
     __tablename__ = "student"
 
     user_id:              Mapped[UUID]               = mapped_column(Uuid, ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
-    #abbonamento:          Mapped[UUID]               = mapped_column(Uuid, ForeignKey("abbonamento.id")) 
-    #corsi:                Mapped[UUID]               = mapped_column(Uuid, ForeignKey("corso.id"))
+    #abbonamento:         Mapped[UUID]               = mapped_column(Uuid, ForeignKey("abbonamento.id")) 
+    #corsi:               Mapped[UUID]               = mapped_column(Uuid, ForeignKey("corso.id"))
 
 
 
@@ -63,7 +63,7 @@ class CorsoRow(Base):
 
     id:                  Mapped[UUID]               = mapped_column(Uuid, primary_key=True)
     title:               Mapped[str]                = mapped_column(Text, nullable=False)
-    #docente:             Mapped[List[Tutor]]        = mapped_column(ARRAY(Tutor)) 
+    #docente:            Mapped[List[Tutor]]        = mapped_column(ARRAY(Tutor)) 
     descrizione:         Mapped[str]                = mapped_column(Text)
     data_inizio:         Mapped[datetime]           = mapped_column(DateTime(timezone=True), nullable=False)
     data_fine:           Mapped[datetime]           = mapped_column(DateTime(timezone=True), nullable=False)
@@ -76,12 +76,28 @@ class CorsoRow(Base):
     )
 
 
+class PianoRow(Base):
+    
+    __tablename__ = "piano"
+
+    id:                 Mapped[UUID]                = mapped_column(Uuid, primary_key=True)
+    nome:               Mapped[str]                 = mapped_column(Text, nullable=False, unique=True)
+    descrizione:        Mapped[str]                 = mapped_column(Text, nullable=False)
+    durata:             Mapped[int]                 = mapped_column(Integer, nullable=False)
+    costo:              Mapped[int]                 = mapped_column(Integer, nullable=False)
+    
+    __table_args__ = (
+        CheckConstraint("durata > 0", name="piano_durata_positiva"),
+        CheckConstraint("costo >= 0", name="piano_costo_non_negativo"),
+    )
+
+
 class AbbonamentoRow(Base):
 
     __tablename__ = "abbonamento"
 
     id:                 Mapped[UUID]                = mapped_column(Uuid, primary_key=True)
-    student_id:         Mapped[UUID]                = mapped_column(Uuid, ForeignKey("student.user_id", ondelete="CASCADE"), nullable=False)
+    student_id:         Mapped[UUID]                = mapped_column(Uuid, ForeignKey("student.user_id", ondelete="CASCADE"))
     durata:             Mapped[int]                 = mapped_column(Integer, nullable=False)
     inizio:             Mapped[datetime]            = mapped_column(DateTime(timezone=True), nullable=False)
     fine:               Mapped[datetime]            = mapped_column(DateTime(timezone=True), nullable=False)
@@ -99,7 +115,7 @@ class AbbonamentoRow(Base):
 CORSO_DOCENTE = Table(
     "corso_docente", Base.metadata, 
     Column("corso_id", Uuid, ForeignKey("corso.id", ondelete="CASCADE"), primary_key=True),
-    Column("tutor_id", Uuid, ForeignKey("tutor.id", ondelete="CASCADE"), primary_key=True)
+    Column("tutor_id", Uuid, ForeignKey("tutor.user_id", ondelete="CASCADE"), primary_key=True)
     
 )
 

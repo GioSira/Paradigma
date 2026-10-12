@@ -1,5 +1,5 @@
 from typing import Mapping, Any
-from pydantic import BaseModel, Field, AwareDatetime
+from pydantic import BaseModel, Field, AwareDatetime, model_validator, ConfigDict
 from uuid import UUID
 from datetime import datetime
 
@@ -9,13 +9,26 @@ import ujson
 
 class Abbonamento(BaseModel):
 
+    model_config = ConfigDict(validate_assignment=True, extra="forbid")
+
     id: UUID
     nome: str = Field(..., min_length=1)
-    durata: int = Field(..., ge=0)
+    student_id: UUID
     inizio: AwareDatetime
     fine: AwareDatetime
     costo: int = Field(..., ge=0)
 
+
+    # ----------------------------- GETTER/SETTER ----------------------------------
+
+    @model_validator(mode="after")
+    def fine_dopo_inizio(self):
+
+        if self.fine <= self.inizio:
+            raise ValueError("fine deve essere dopo inizio")
+
+        return self
+    
 
     # ----------------------------- GETTER/SETTER ----------------------------------
 
@@ -33,14 +46,12 @@ class Abbonamento(BaseModel):
         return self.nome
 
 
-    def set_durata(self, new_durata: int):
+    def set_student_id(self, student_id: UUID):
 
-        assert new_durata >= 0, ValueError("durata cannot be negative")
+        self.student_id = student_id
 
-        self.durata = new_durata
-
-    def get_durata(self):
-        return self.durata
+    def get_student_id(self) -> UUID:
+        return self.student_id
 
 
     def set_inizio(self, new_inizio: datetime):
@@ -94,14 +105,14 @@ class Abbonamento(BaseModel):
 
         return {
             "id": str(self.id),
+            "student_id": str(self.student_id),
             "nome": self.get_nome(),
-            "durata": self.get_durata(),
             "costo": self.get_costo(),
             "inizio": self.inizio.isoformat(),
             "fine": self.fine.isoformat()
         }
 
 
-    @staticmethod
+    @classmethod
     def from_db(cls, record: Mapping[str, Any]) -> "Abbonamento":
         return cls(**record)

@@ -38,8 +38,8 @@ from src.roles.user import User
 from src.sqldb.base import Base, make_engine
 from src.sqldb.errors import EmailAlreadyRegistered, UserAlreadyExists, UserNotFound
 from src.sqldb.tables import TutorRow, UserRow
-from src.sqldb.tutor_repository import TutorRepository
-from src.sqldb.user_repository import UserRepository
+from src.sqldb.repository.tutor_repository import TutorRepository
+from src.sqldb.repository.user_repository import UserRepository
 
 load_dotenv()
 DATABASE_URL = os.environ.get("TEST_DATABASE_URL")

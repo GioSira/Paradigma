@@ -27,7 +27,7 @@ import src.roles.user as user_module
 from src.roles.user import User
 from src.sqldb.base import Base, make_engine
 from src.sqldb.errors import EmailAlreadyRegistered, UserAlreadyExists, UserNotFound
-from src.sqldb.user_repository import UserRepository
+from src.sqldb.repository.user_repository import UserRepository
 from src.sqldb.tables import UserRow
 
 load_dotenv()

@@ -1,5 +1,4 @@
 from src.roles.user import User
-from src.corsi.corso import Corso
 from pydantic import Field, field_validator
 from typing import Optional, List, Any
 from uuid import UUID
@@ -12,14 +11,12 @@ class Tutor(User):
     title: str = Field(..., min_length=1)
     bio: Optional[str] = Field(..., min_length=1)
     subjects: List[str]
-    corso: List[Corso]
-
 
     # ----------------------------- COSTRUZIONE -----------------------------
 
     @classmethod
     def create(cls, user_id: UUID, name: str, surname: str, email: str, password: str,
-               tutor_title: str, subjects: List[str], corso: List[Corso] = [],
+               tutor_title: str, subjects: List[str],
                bio: Optional[str] = None, created_at: Optional[datetime] = None) -> "Tutor":
         """Registrazione di un nuovo utente, a partire dalla password in chiaro.
 
@@ -36,7 +33,6 @@ class Tutor(User):
             title=tutor_title,
             subjects=subjects,
             bio=bio,
-            corso = corso,
         )
 
 

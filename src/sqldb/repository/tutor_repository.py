@@ -1,5 +1,5 @@
 from src.sqldb.tables import TutorRow, UserRow
-from src.sqldb.user_repository import UserRepository, _constraint_name
+from src.sqldb.repository.user_repository import UserRepository, _constraint_name
 from src.roles.tutor import Tutor
 from src.roles.user import User
 

@@ -83,6 +83,9 @@ class Corso(BaseModel):
 
         self.data_fine = new_data
 
+    def get_data_fine(self):
+        return self.data_fine
+
 
     @staticmethod
     def _format_data(data: datetime):
@@ -110,4 +113,9 @@ class Corso(BaseModel):
 
     def to_json(self):
         return ujson.dumps(self._json_payload())
+
+
+    @classmethod
+    def from_db(cls, record):
+        return cls(**record)
     

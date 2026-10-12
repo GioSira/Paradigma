@@ -1,7 +1,7 @@
 from typing import List, Optional
 from src.roles.user import User
 from src.corsi.corso import Corso
-from src.abbonamenti.abbonamento import Abbonamento
+from src.subscription.abbonamento import Abbonamento
 from uuid import UUID
 
 
