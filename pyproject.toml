@@ -18,5 +18,11 @@ dependencies = [
     "requests>=2.34.2",
     "sqlalchemy[asyncio]>=2.0.54",
     "ujson>=6.0.0",
-    "uvicorn>=0.54.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.168.3",
+    "pytest>=9.1.1",
 ]
