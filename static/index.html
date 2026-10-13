@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Paradigma</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --fill: #f2f2f4;           /* sfondo dei campi */
+    --fill-hover: #e8e8ed;
+    --text: #1d1d1f;
+    --secondary: #6e6e73;
+    --tertiary: #86868b;
+    --separator: rgba(0, 0, 0, .08);
+    --accent: #0071e3;
+    --accent-hover: #0077ed;
+    --accent-soft: rgba(0, 113, 227, .1);
+    --green: #28a745;
+    --red: #e30000;
+    --bar: rgba(251, 251, 253, .78);
+    --shadow: 0 2px 6px rgba(0, 0, 0, .04), 0 12px 32px rgba(0, 0, 0, .06);
+    --shadow-strong: 0 4px 12px rgba(0, 0, 0, .06), 0 24px 56px rgba(0, 0, 0, .1);
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif;
+    --radius-l: 24px;
+    --radius-m: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000000;
+      --surface: #1c1c1e;
+      --fill: #2c2c2e;
+      --fill-hover: #3a3a3c;
+      --text: #f5f5f7;
+      --secondary: #a1a1a6;
+      --tertiary: #8e8e93;
+      --separator: rgba(255, 255, 255, .1);
+      --accent: #2997ff;
+      --accent-hover: #47a6ff;
+      --accent-soft: rgba(41, 151, 255, .16);
+      --green: #30d158;
+      --red: #ff453a;
+      --bar: rgba(22, 22, 23, .72);
+      --shadow: 0 0 0 1px rgba(255, 255, 255, .06);
+      --shadow-strong: 0 0 0 1px rgba(255, 255, 255, .08), 0 24px 56px rgba(0, 0, 0, .6);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.47 var(--font);
+    letter-spacing: -0.022em;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
+  :focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; box-shadow: 0 0 0 1px var(--accent); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* ------------------------------ barra in alto ------------------------------ */
+  .bar {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bar);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--separator);
+  }
+  .bar-inner {
+    max-width: 1080px; margin: 0 auto; height: 56px; padding: 0 22px;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+  }
+  .brand { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; display: flex; align-items: center; gap: 9px; }
+  .brand svg { width: 22px; height: 22px; color: var(--accent); }
+
+  .segmented {
+    display: inline-flex; padding: 3px; gap: 2px;
+    background: var(--fill); border-radius: 10px;
+  }
+  .segmented button {
+    border: 0; background: transparent; cursor: pointer;
+    padding: 5px 16px; border-radius: 8px;
+    font-size: 14px; font-weight: 500; color: var(--secondary);
+    transition: background .2s, color .2s, box-shadow .2s;
+  }
+  .segmented button[aria-selected=true] {
+    background: var(--surface); color: var(--text);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04);
+  }
+
+  .bar-right { display: flex; justify-content: flex-end; align-items: center; gap: 14px; }
+  .course {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--fill); border-radius: 999px; padding: 0 4px 0 12px; height: 32px;
+  }
+  .course label { font-size: 13px; color: var(--tertiary); }
+  .course input {
+    width: 120px; border: 0; background: transparent; outline: none;
+    font-size: 14px; font-weight: 500; padding: 4px 8px 4px 0;
+  }
+  .course:focus-within { box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--accent); }
+  .course.invalid { box-shadow: 0 0 0 1px var(--red); }
+
+  .status { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--secondary); white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tertiary); }
+  .status.up .dot { background: var(--green); }
+  .status.down .dot { background: var(--red); }
+
+  /* ------------------------------ contenuto ------------------------------ */
+  main { max-width: 1080px; margin: 0 auto; padding: 0 22px 120px; }
+  .view[hidden] { display: none; }
+
+  .hero { text-align: center; padding: 88px 0 40px; }
+  .hero h1 {
+    margin: 0; font-size: clamp(40px, 6vw, 64px); line-height: 1.06;
+    font-weight: 700; letter-spacing: -0.035em;
+  }
+  /* dopo la prima domanda il titolo si fa piu' piccolo: conta la risposta */
+  .compact .hero { padding: 44px 0 26px; }
+  .compact .hero h1 { font-size: clamp(28px, 4vw, 40px); }
+  .compact .hero p { display: none; }
+  .hero p { margin: 14px auto 0; max-width: 34ch; font-size: 21px; line-height: 1.38; color: var(--secondary); letter-spacing: -0.01em; }
+
+  /* il campo della domanda */
+  .ask-box {
+    max-width: 760px; margin: 0 auto;
+    background: var(--surface); border-radius: var(--radius-l);
+    box-shadow: var(--shadow-strong);
+    padding: 10px 10px 10px 24px;
+    display: flex; align-items: flex-end; gap: 12px;
+    transition: box-shadow .25s;
+  }
+  .ask-box:focus-within { box-shadow: var(--shadow-strong), 0 0 0 4px var(--accent-soft); }
+  .ask-box textarea {
+    flex: 1; border: 0; outline: none; background: transparent; resize: none;
+    font-size: 21px; line-height: 1.4; padding: 11px 0; min-height: 52px; max-height: 220px;
+    letter-spacing: -0.015em;
+  }
+  .ask-box textarea::placeholder { color: var(--tertiary); }
+  .ask-box textarea:focus-visible { outline: none; box-shadow: none; }
+
+  .round {
+    flex: none; width: 48px; height: 48px; border-radius: 50%; border: 0; cursor: pointer;
+    background: var(--accent); color: #fff; display: grid; place-items: center;
+    transition: background .2s, transform .15s;
+  }
+  .round:hover { background: var(--accent-hover); }
+  .round:active { transform: scale(.94); }
+  .round:disabled { opacity: .45; cursor: default; }
+  .round svg { width: 22px; height: 22px; }
+  .round .spinner { display: none; }
+  .round.busy .arrow { display: none; }
+  .round.busy .spinner { display: block; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .scope { display: flex; justify-content: center; margin-top: 18px; }
+  .select {
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+    border: 0; border-radius: 999px; background: var(--fill);
+    padding: 7px 34px 7px 16px; font-size: 14px; font-weight: 500; color: var(--secondary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%2386868b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+    max-width: 100%;
+  }
+  .select:hover { background-color: var(--fill-hover); }
+
+  .hint { text-align: center; margin-top: 14px; font-size: 13px; color: var(--tertiary); }
+
+  /* ------------------------------ risposta ------------------------------ */
+  .result { max-width: 760px; margin: 48px auto 0; }
+  .result[hidden] { display: none; }
+
+  .answer-card {
+    background: var(--surface); border-radius: var(--radius-l); box-shadow: var(--shadow);
+    padding: 34px 40px;
+  }
+  .answer-card .q { margin: 0 0 18px; font-size: 14px; font-weight: 600; color: var(--tertiary); letter-spacing: -0.01em; }
+  .answer { font-size: 19px; line-height: 1.6; letter-spacing: -0.012em; }
+  .answer p { margin: 0 0 .9em; }
+  .answer p:last-child { margin-bottom: 0; }
+  .answer.muted { color: var(--secondary); }
+
+  .cite {
+    display: inline-grid; place-items: center;
+    min-width: 20px; height: 20px; padding: 0 6px; margin: 0 1px;
+    border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+    font-size: 12px; font-weight: 600; letter-spacing: 0; text-decoration: none;
+    vertical-align: 2px; transition: background .15s, color .15s;
+  }
+  .cite:hover, .cite.on { background: var(--accent); color: #fff; }
+
+  /* skeleton durante l'attesa: risponde all'azione dell'utente */
+  .skeleton span {
+    display: block; height: 14px; border-radius: 7px; margin: 12px 0;
+    background: linear-gradient(90deg, var(--fill) 0%, var(--fill-hover) 50%, var(--fill) 100%);
+    background-size: 200% 100%; animation: shimmer 1.3s ease-in-out infinite;
+  }
+  .skeleton span:nth-child(2) { width: 92%; }
+  .skeleton span:nth-child(3) { width: 64%; }
+  @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+  .sources-head { display: flex; justify-content: space-between; align-items: baseline; margin: 40px 4px 14px; }
+  .sources-head h2 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+  .sources-head span { font-size: 14px; color: var(--tertiary); }
+  .sources { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+
+  .source {
+    background: var(--surface); border-radius: 18px; box-shadow: var(--shadow);
+    padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 10px;
+    transition: box-shadow .2s, transform .2s;
+  }
+  .source.on { box-shadow: var(--shadow), 0 0 0 2px var(--accent); }
+  .source header { display: flex; align-items: center; gap: 10px; }
+  .num {
+    flex: none; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent); color: #fff; display: grid; place-items: center;
+    font-size: 12px; font-weight: 600; letter-spacing: 0;
+  }
+  .doc { font-size: 13px; font-weight: 600; color: var(--secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .source p {
+    margin: 0; font-size: 14px; line-height: 1.5; color: var(--text); letter-spacing: -0.008em;
+    display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .source.open p { -webkit-line-clamp: unset; }
+  .source footer { display: flex; align-items: center; gap: 10px; margin-top: auto; }
+  .meter { flex: 1; height: 4px; border-radius: 2px; background: var(--fill); overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+  .pct { font-size: 12px; color: var(--tertiary); font-variant-numeric: tabular-nums; }
+  .link { border: 0; background: none; padding: 0; cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 500; }
+  .link:hover { text-decoration: underline; }
+
+  .error {
+    max-width: 760px; margin: 22px auto 0; padding: 14px 18px;
+    border-radius: var(--radius-m); background: rgba(227, 0, 0, .07); color: var(--red);
+    font-size: 15px;
+  }
+  .error[hidden] { display: none; }
+
+  /* ------------------------------ caricamento ------------------------------ */
+  .upload { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .card { background: var(--surface); border-radius: var(--radius-l); box-shadow: var(--shadow); padding: 30px; }
+  .card h2 { margin: 0 0 4px; font-size: 21px; font-weight: 600; letter-spacing: -0.02em; }
+  .card .sub { margin: 0 0 22px; font-size: 14px; color: var(--secondary); }
+
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 13px; font-weight: 500; color: var(--secondary); margin: 0 0 7px 2px; }
+  .input, .area {
+    width: 100%; border: 0; border-radius: 12px; background: var(--fill);
+    padding: 12px 14px; font-size: 16px; outline: none; transition: background .2s, box-shadow .2s;
+  }
+  .input:focus, .area:focus { background: var(--surface); box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); }
+  .area { min-height: 240px; resize: vertical; line-height: 1.55; font-size: 15px; }
+
+  .drop {
+    display: flex; align-items: center; gap: 14px; cursor: pointer;
+    border: 1.5px dashed var(--separator); border-radius: 16px; padding: 18px;
+    transition: border-color .2s, background .2s;
+  }
+  .drop:hover, .drop.over, .drop:focus-within { border-color: var(--accent); background: var(--accent-soft); }
+  .drop svg { flex: none; width: 34px; height: 34px; color: var(--accent); }
+  .drop strong { display: block; font-size: 15px; font-weight: 600; }
+  .drop span { font-size: 13px; color: var(--secondary); }
+  .or { text-align: center; font-size: 13px; color: var(--tertiary); margin: 14px 0; }
+
+  .actions { display: flex; align-items: center; gap: 16px; margin-top: 6px; flex-wrap: wrap; }
+  .pill {
+    border: 0; cursor: pointer; border-radius: 999px; padding: 12px 24px;
+    background: var(--accent); color: #fff; font-size: 16px; font-weight: 500;
+    transition: background .2s, transform .15s;
+  }
+  .pill:hover { background: var(--accent-hover); }
+  .pill:active { transform: scale(.97); }
+  .pill:disabled { opacity: .5; cursor: default; }
+  .ok { font-size: 15px; font-weight: 500; color: var(--green); display: flex; align-items: center; gap: 6px; }
+
+  .side { display: flex; flex-direction: column; gap: 20px; }
+  .big { font-size: 56px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .big small { font-size: 21px; font-weight: 600; letter-spacing: -0.02em; margin-left: 6px; }
+  .side .sub { margin-top: 6px; }
+
+  .slider { margin-top: 20px; }
+  .slider .top { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
+  .slider .top span { color: var(--secondary); }
+  .slider output { font-weight: 600; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+
+  .list { list-style: none; margin: 18px 0 0; padding: 0; max-height: 220px; overflow: auto; }
+  .list li { font-size: 13px; color: var(--secondary); padding: 9px 0; border-top: 1px solid var(--separator); line-height: 1.4; }
+  .docs { list-style: none; margin: 0; padding: 0; }
+  .docs li { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 1px solid var(--separator); font-size: 15px; }
+  .docs li:first-child { border-top: 0; }
+  .docs li span:last-child { color: var(--tertiary); white-space: nowrap; font-size: 14px; }
+  .docs .empty { color: var(--tertiary); font-size: 14px; }
+
+  @media (max-width: 860px) {
+    .bar-inner { grid-template-columns: 1fr auto; height: auto; padding: 10px 16px; row-gap: 10px; }
+    .segmented { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; }
+    .segmented button { flex: 1; }
+    .status span:last-child { display: none; }
+    .course input { width: 90px; }
+    main { padding: 0 16px 80px; }
+    .hero { padding: 48px 0 28px; }
+    .hero p { font-size: 18px; }
+    .ask-box { padding-left: 18px; }
+    .ask-box textarea { font-size: 18px; }
+    .answer-card { padding: 24px 22px; }
+    .answer { font-size: 17px; }
+    .upload { grid-template-columns: 1fr; }
+    .card { padding: 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-inner">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 12h5"/>
+      </svg>
+      Paradigma
+    </div>
+
+    <nav class="segmented" role="tablist" aria-label="Sezioni">
+      <button role="tab" id="tab-ask" aria-selected="true" aria-controls="view-ask">Chiedi</button>
+      <button role="tab" id="tab-upload" aria-selected="false" aria-controls="view-upload">Carica</button>
+    </nav>
+
+    <div class="bar-right">
+      <div class="course" id="course">
+        <label for="ns">Corso</label>
+        <input id="ns" type="text" value="demo" autocomplete="off" spellcheck="false"
+               title="Lettere, cifre, _ e -">
+      </div>
+      <div id="status" class="status" role="status"><span class="dot"></span><span>Connessione…</span></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ================================ domanda ================================ -->
+  <section id="view-ask" class="view" role="tabpanel" aria-labelledby="tab-ask">
+    <div class="hero">
+      <h1>Chiedi ai tuoi appunti.</h1>
+      <p>Risposte tratte solo dai materiali del corso, con le fonti sempre in vista.</p>
+    </div>
+
+    <form id="ask-form">
+      <div class="ask-box">
+        <label for="question" class="sr-only">La tua domanda</label>
+        <textarea id="question" rows="1" maxlength="2000" placeholder="Che cos'è una chiave esterna?" required></textarea>
+        <button class="round" id="ask-btn" type="submit" aria-label="Chiedi">
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          <svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg>
+        </button>
+      </div>
+      <div class="scope">
+        <select id="doc-filter" class="select" aria-label="Dove cercare">
+          <option value="">In tutti i documenti</option>
+        </select>
+      </div>
+      <p class="hint">Invio per chiedere, Maiusc + Invio per andare a capo</p>
+    </form>
+
+    <div id="ask-error" class="error" role="alert" hidden></div>
+
+    <div id="page" class="result" hidden aria-live="polite">
+      <article class="answer-card">
+        <p class="q" id="asked"></p>
+        <div id="answer" class="answer"></div>
+      </article>
+      <div id="sources-wrap" hidden>
+        <div class="sources-head"><h2>Fonti</h2><span id="sources-count"></span></div>
+        <div id="margin" class="sources"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================ caricamento ================================ -->
+  <section id="view-upload" class="view" role="tabpanel" aria-labelledby="tab-upload" hidden>
+    <div class="hero">
+      <h1>Aggiungi un documento.</h1>
+      <p>Il testo viene diviso in brani e indicizzato, pronto per le domande.</p>
+    </div>
+
+    <form id="upload-form" class="upload">
+      <div class="card">
+        <div class="field">
+          <label for="doc-name">Titolo</label>
+          <input id="doc-name" class="input" type="text" maxlength="300" required placeholder="Dispensa 3 – Il modello relazionale">
+        </div>
+
+        <label class="drop" id="drop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3"/></svg>
+          <div>
+            <strong>Scegli un file o trascinalo qui</strong>
+            <span>Testo semplice o Markdown, .txt e .md</span>
+          </div>
+          <input id="doc-file" class="sr-only" type="file" accept=".txt,.md,text/plain,text/markdown">
+        </label>
+
+        <div class="or">oppure</div>
+
+        <div class="field">
+          <label for="doc-text">Incolla il testo</label>
+          <textarea id="doc-text" class="area" required></textarea>
+        </div>
+
+        <div class="actions">
+          <button class="pill" id="upload-btn" type="submit">Carica documento</button>
+          <span id="upload-msg" role="status"></span>
+        </div>
+        <div id="upload-error" class="error" role="alert" hidden style="margin-left:0"></div>
+      </div>
+
+      <div class="side">
+        <div class="card" aria-live="polite">
+          <div class="big"><span id="chunk-num">0</span><small id="chunk-unit">brani</small></div>
+          <p class="sub" id="chunk-chars">Incolla un testo per vedere come viene diviso.</p>
+
+          <div class="slider">
+            <div class="top"><span><label for="max-chars">Lunghezza dei brani</label></span><output id="max-chars-out">900</output></div>
+            <input id="max-chars" type="range" min="300" max="2000" step="50" value="900">
+          </div>
+          <div class="slider">
+            <div class="top"><span><label for="overlap">Sovrapposizione</label></span><output id="overlap-out">120</output></div>
+            <input id="overlap" type="range" min="0" max="400" step="10" value="120">
+          </div>
+
+          <ol id="chunk-list" class="list"></ol>
+        </div>
+
+        <div class="card">
+          <h2>Documenti del corso</h2>
+          <p class="sub">Quelli caricati da questo browser.</p>
+          <ul id="doc-list" class="docs"></ul>
+        </div>
+      </div>
+    </form>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const $ = (id) => document.getElementById(id);
+const DOCS_KEY = "paradigma.docs";
+const NS_KEY = "paradigma.namespace";
+
+// ------------------------------ archivio locale (facoltativo) ------------------------------
+// Il server non ha (ancora) un elenco dei documenti: lo teniamo nel browser.
+function loadDocs() {
+  try { return JSON.parse(localStorage.getItem(DOCS_KEY)) || {}; } catch { return {}; }
+}
+function saveDocs(all) {
+  try { localStorage.setItem(DOCS_KEY, JSON.stringify(all)); } catch { /* modalita' privata */ }
+}
+function docsOf(ns) { return loadDocs()[ns] || []; }
+function rememberDoc(ns, doc) {
+  const all = loadDocs();
+  const list = (all[ns] || []).filter((d) => d.id !== doc.id);
+  list.unshift(doc);
+  all[ns] = list;
+  saveDocs(all);
+}
+
+function namespace() { return $("ns").value.trim(); }
+function validNamespace(ns) { return /^[A-Za-z0-9_-]{1,64}$/.test(ns); }
+
+function renderDocs() {
+  const ns = namespace();
+  const ok = validNamespace(ns);
+  $("course").classList.toggle("invalid", !ok);
+  const docs = ok ? docsOf(ns) : [];
+
+  const list = $("doc-list");
+  list.replaceChildren();
+  if (!docs.length) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = "Nessun documento ancora. Caricane uno per iniziare.";
+    list.append(li);
+  }
+  for (const d of docs) {
+    const li = document.createElement("li");
+    const name = document.createElement("span");
+    name.textContent = d.name;
+    const n = document.createElement("span");
+    n.textContent = `${d.chunks} brani`;
+    li.append(name, n);
+    list.append(li);
+  }
+
+  const filter = $("doc-filter");
+  const keep = filter.value;
+  filter.replaceChildren(new Option("In tutti i documenti", ""));
+  for (const d of docs) filter.append(new Option(d.name, d.id));
+  filter.value = docs.some((d) => d.id === keep) ? keep : "";
+}
+
+// ------------------------------ chiamate al server ------------------------------
+async function api(path, options = {}) {
+  let response;
+  try {
+    response = await fetch(path, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    });
+  } catch {
+    throw new Error("Il server non risponde. Controlla che uvicorn sia avviato.");
+  }
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(describeError(response, body));
+  return body;
+}
+
+function describeError(response, body) {
+  const detail = body && body.detail;
+  if (Array.isArray(detail)) {
+    // Errori di validazione di FastAPI: [{loc, msg}, ...]
+    return "Dati non validi: " + detail.map((e) => `${(e.loc || []).slice(1).join(".")} – ${e.msg}`).join("; ");
+  }
+  if (response.status === 503) return (detail || "Indicizzazione non riuscita.") + " Riprova tra qualche secondo.";
+  return detail || `Errore ${response.status}`;
+}
+
+async function checkHealth() {
+  const el = $("status");
+  try {
+    const r = await fetch("/health");
+    el.className = "status " + (r.ok ? "up" : "down");
+    el.lastElementChild.textContent = r.ok ? "Online" : `Errore ${r.status}`;
+  } catch {
+    el.className = "status down";
+    el.lastElementChild.textContent = "Offline";
+  }
+}
+
+// ------------------------------ domanda e risposta ------------------------------
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Testo del modello -> paragrafi, **grassetto**, e [n] -> rimando alla fonte n.
+function renderAnswer(text, sources) {
+  const numbers = new Set(sources.map((s) => s.number));
+  return text.trim().split(/\n{2,}/).map((para) => {
+    const html = escapeHtml(para)
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\n/g, "<br>")
+      .replace(/\[(\d+)\]/g, (m, n) => numbers.has(+n)
+        ? `<a class="cite" href="#src-${n}" data-n="${n}" aria-label="fonte ${n}">${n}</a>`
+        : m);
+    return `<p>${html}</p>`;
+  }).join("");
+}
+
+function docName(ns, id) {
+  const d = docsOf(ns).find((x) => x.id === id);
+  return d ? d.name : "Documento " + id.slice(0, 8);
+}
+
+function renderSources(ns, sources) {
+  const box = $("margin");
+  box.replaceChildren();
+  $("sources-wrap").hidden = !sources.length;
+  $("sources-count").textContent = sources.length === 1 ? "1 brano" : `${sources.length} brani`;
+
+  for (const s of sources) {
+    const card = document.createElement("section");
+    card.className = "source";
+    card.id = `src-${s.number}`;
+    card.dataset.n = s.number;
+    card.tabIndex = -1;
+
+    const head = document.createElement("header");
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = s.number;
+    const doc = document.createElement("span");
+    doc.className = "doc";
+    doc.textContent = docName(ns, s.document_id);
+    head.append(num, doc);
+
+    const p = document.createElement("p");
+    p.textContent = s.text;
+
+    const foot = document.createElement("footer");
+    const pct = Math.max(0, Math.min(100, Math.round(s.score * 100)));
+    const meter = document.createElement("span");
+    meter.className = "meter";
+    meter.setAttribute("aria-hidden", "true");
+    meter.innerHTML = `<i style="width:${pct}%"></i>`;
+    const label = document.createElement("span");
+    label.className = "pct";
+    label.textContent = `${pct}% pertinente`;
+    const more = document.createElement("button");
+    more.type = "button";
+    more.className = "link";
+    more.textContent = "Leggi tutto";
+    more.addEventListener("click", () => {
+      const open = card.classList.toggle("open");
+      more.textContent = open ? "Riduci" : "Leggi tutto";
+    });
+    foot.append(meter, label, more);
+
+    card.append(head, p, foot);
+    box.append(card);
+  }
+}
+
+function linkCitations() {
+  const targets = (n) => document.querySelectorAll(`[data-n="${n}"]`);
+  for (const cite of document.querySelectorAll(".cite")) {
+    const on = (v) => targets(cite.dataset.n).forEach((el) => el.classList.toggle("on", v));
+    cite.addEventListener("mouseenter", () => on(true));
+    cite.addEventListener("mouseleave", () => on(false));
+    cite.addEventListener("focus", () => on(true));
+    cite.addEventListener("blur", () => on(false));
+    cite.addEventListener("click", (e) => {
+      e.preventDefault();
+      const target = $(`src-${cite.dataset.n}`);
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.focus({ preventScroll: true });
+    });
+  }
+}
+
+function showError(id, message) {
+  const el = $(id);
+  el.textContent = message;
+  el.hidden = !message;
+}
+
+$("ask-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const ns = namespace();
+  const question = $("question").value.trim();
+  showError("ask-error", "");
+  if (!validNamespace(ns)) return showError("ask-error", "Il nome del corso può contenere solo lettere, cifre, _ e -.");
+  if (!question) return showError("ask-error", "Scrivi una domanda.");
+
+  const btn = $("ask-btn");
+  btn.disabled = true;
+  btn.classList.add("busy");
+  $("view-ask").classList.add("compact");
+  const answer = $("answer");
+  $("page").hidden = false;
+  $("sources-wrap").hidden = true;
+  $("asked").textContent = question;
+  answer.className = "answer skeleton";
+  answer.innerHTML = "<span></span><span></span><span></span>";
+
+  try {
+    const body = { question };
+    if ($("doc-filter").value) body.document_id = $("doc-filter").value;
+    const result = await api(`/namespaces/${ns}/ask`, { method: "POST", body: JSON.stringify(body) });
+    answer.className = "answer" + (result.sources.length ? "" : " muted");
+    answer.innerHTML = renderAnswer(result.answer, result.sources);
+    renderSources(ns, result.sources);
+    linkCitations();
+  } catch (err) {
+    $("page").hidden = true;
+    showError("ask-error", err.message);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove("busy");
+  }
+});
+
+// Invio = chiedi, Maiusc+Invio = a capo. La casella cresce con il testo.
+$("question").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("ask-form").requestSubmit(); }
+});
+$("question").addEventListener("input", (e) => {
+  e.target.style.height = "auto";
+  e.target.style.height = e.target.scrollHeight + "px";
+});
+
+// ------------------------------ divisione in brani ------------------------------
+// Stessa logica di scripts/carica_chunk.py: taglia a fine paragrafo, poi a fine
+// frase, poi su uno spazio; start/end sono le posizioni nel testo originale.
+const BREAKS = ["\n\n", "\n", ". ", "? ", "! ", "; ", ", ", " "];
+
+function splitText(text, maxChars, overlap) {
+  const chunks = [];
+  let start = 0;
+  while (start < text.length) {
+    let end = Math.min(start + maxChars, text.length);
+    if (end < text.length) {
+      const window = text.slice(start, end);
+      for (const sep of BREAKS) {
+        const cut = window.lastIndexOf(sep);
+        if (cut > maxChars / 2) { end = start + cut + sep.length; break; }
+      }
+    }
+    const piece = text.slice(start, end);
+    if (piece.trim()) chunks.push({ start_idx: start, end_idx: end, text: piece });
+    if (end >= text.length) break;
+    let next = Math.max(end - overlap, start + 1);
+    const space = text.indexOf(" ", next);           // non ripartire a meta' parola
+    if (space !== -1 && space < end) next = space + 1;
+    start = next;
+  }
+  return chunks;
+}
+
+function settings() {
+  const maxChars = +$("max-chars").value;
+  const overlap = Math.min(+$("overlap").value, Math.floor(maxChars / 2) - 1);
+  return { maxChars, overlap };
+}
+
+function updatePreview() {
+  const { maxChars, overlap } = settings();
+  $("max-chars-out").textContent = `${maxChars} caratteri`;
+  $("overlap-out").textContent = `${overlap} caratteri`;
+  const text = $("doc-text").value;
+  const chunks = splitText(text, maxChars, overlap);
+  $("chunk-num").textContent = chunks.length;
+  $("chunk-unit").textContent = chunks.length === 1 ? "brano" : "brani";
+  $("chunk-chars").textContent = text
+    ? `da ${text.length.toLocaleString("it-IT")} caratteri di testo`
+    : "Incolla un testo per vedere come viene diviso.";
+  $("chunk-list").replaceChildren(...chunks.slice(0, 50).map((c) => {
+    const li = document.createElement("li");
+    const t = c.text.trim().replace(/\s+/g, " ");
+    li.textContent = t.length > 110 ? t.slice(0, 110) + "…" : t;
+    return li;
+  }));
+  return chunks;
+}
+
+["doc-text", "max-chars", "overlap"].forEach((id) => $(id).addEventListener("input", updatePreview));
+
+async function loadFile(file) {
+  if (!file) return;
+  $("doc-text").value = await file.text();
+  if (!$("doc-name").value.trim()) $("doc-name").value = file.name.replace(/\.[^.]+$/, "");
+  updatePreview();
+}
+$("doc-file").addEventListener("change", (e) => loadFile(e.target.files[0]));
+
+const drop = $("drop");
+["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((t) => drop.addEventListener(t, () => drop.classList.remove("over")));
+drop.addEventListener("drop", (e) => { e.preventDefault(); loadFile(e.dataTransfer.files[0]); });
+
+function newUuid() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+$("upload-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const ns = namespace();
+  const name = $("doc-name").value.trim();
+  const chunks = updatePreview();
+  showError("upload-error", "");
+  $("upload-msg").replaceChildren();
+  if (!validNamespace(ns)) return showError("upload-error", "Il nome del corso può contenere solo lettere, cifre, _ e -.");
+  if (!name) return showError("upload-error", "Dai un titolo al documento.");
+  if (!chunks.length) return showError("upload-error", "Il testo è vuoto.");
+
+  // Stesso titolo nello stesso corso = stesso documento: ricaricarlo lo sostituisce.
+  const existing = docsOf(ns).find((d) => d.name === name);
+  const id = existing ? existing.id : newUuid();
+
+  const btn = $("upload-btn");
+  btn.disabled = true;
+  btn.textContent = `Carico ${chunks.length} brani…`;
+  try {
+    const now = new Date().toISOString();
+    const result = await api(`/namespaces/${ns}/documents/${id}/chunks`, {
+      method: "PUT",
+      body: JSON.stringify({ chunks: chunks.map((c) => ({ ...c, last_modified: now })) }),
+    });
+    rememberDoc(ns, { id, name, chunks: result.chunks });
+    renderDocs();
+    const msg = $("upload-msg");
+    msg.className = "ok";
+    msg.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+    msg.append(existing ? `Aggiornato, ${result.chunks} brani` : `Caricato, ${result.chunks} brani`);
+  } catch (err) {
+    showError("upload-error", err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Carica documento";
+  }
+});
+
+// ------------------------------ schede e avvio ------------------------------
+function selectTab(which) {
+  for (const t of ["ask", "upload"]) {
+    $(`tab-${t}`).setAttribute("aria-selected", String(t === which));
+    $(`view-${t}`).hidden = t !== which;
+  }
+}
+$("tab-ask").addEventListener("click", () => selectTab("ask"));
+$("tab-upload").addEventListener("click", () => selectTab("upload"));
+
+try { $("ns").value = localStorage.getItem(NS_KEY) || "demo"; } catch { /* niente */ }
+$("ns").addEventListener("input", () => {
+  try { localStorage.setItem(NS_KEY, namespace()); } catch { /* niente */ }
+  renderDocs();
+});
+
+renderDocs();
+updatePreview();
+checkHealth();
+setInterval(checkHealth, 15000);
+</script>
+</body>
+</html>

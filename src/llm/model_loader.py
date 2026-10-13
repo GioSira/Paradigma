@@ -7,8 +7,10 @@ from dotenv import load_dotenv
 from typing import List, Any, Tuple, Optional
 from uuid import UUID
 
-from src.collection.document import Document
 from src.llm.model_selector import ModelSelector
+from src.llm.errors import GenerationError
+from src.chunks.document_chunk import DocumentChunk
+from src.collection.document import Document
 
 
 class ModelLoader:
@@ -18,6 +20,8 @@ class ModelLoader:
                  rerank_model: ModelSelector = ModelSelector.VOYAGE_RERANK,
                  embed_model: ModelSelector = ModelSelector.NEMOTRON_EMBED,
                  embed_dimension: Optional[int] = None,
+                 reasoning_effort: Optional[str] = "none",
+                 max_tokens: int = 1000,
                  timeout_seconds: float = 30,
                  retry_seconds: float = 60,
                  client: Optional[OpenRouter] = None):
@@ -29,6 +33,8 @@ class ModelLoader:
         self._reranker = rerank_model
         self._embed_model = embed_model
         self._embed_dimension = embed_dimension
+        self._reasoning_effort = reasoning_effort
+        self._max_tokens = max_tokens
  
         self._timeout_ms = int(timeout_seconds * 1000)
         self._retries = RetryConfig(
@@ -138,9 +144,29 @@ class ModelLoader:
         return response.data[0].embedding
 
 
+    async def embed_text_batch(self, text_batch: List[str]) -> List[Any]:
+
+        if not text_batch or len(text_batch) == 0:
+            return []
+
+        params = self._get_params(self._embed_model)
+        if self._embed_dimension is not None:
+            params["dimension"] = self._embed_dimension
+        
+        response = await self._client.embeddings.generate_async(input=text_batch, **params)
+        
+        data = response.data
+        
+        if len(data) != len(text_batch):
+            raise RuntimeError(f"attesi {len(text_batch)} embedding, ricevuti {len(response.data)}")
+        
+        return [(doc, item.embedding) for doc, item in zip(text_batch, data)]
+        
+
+
     # ============================== RERANK ==============================
 
-    async def rerank(self, query: str, documents: List[Document], top_n: int = 3) -> List[Tuple[float, str]]:
+    async def rerank(self, query: str, documents: List[DocumentChunk], top_n: int = 3) -> List[Tuple[float, str]]:
 
         if top_n < 1:
             raise ValueError(f"top_n deve essere almeno 1, ricevuto {top_n}")
@@ -148,7 +174,7 @@ class ModelLoader:
         if not documents:
             return []
 
-        document_text = [d.get_document_text() or "" for d in documents]
+        document_text = [d.get_chunk_text() or "" for d in documents]
 
         response = await self._client.rerank.rerank_async(documents=document_text, 
                                                           query=query, 
@@ -163,7 +189,7 @@ class ModelLoader:
     # ============================== GENERATION ==============================
 
 
-    async def generate(self, system_prompt: str, query: str, context: List[str], max_tokens: int = 1000, top_p=0.95):
+    async def generate(self, system_prompt: str, query: str, context: List[str], top_p=0.95):
 
         llm_context = "\n\n".join(context)
 
@@ -172,18 +198,35 @@ class ModelLoader:
             {"role": "user", "content": f"Question: {query}\n\nContext:\n{llm_context}"}
         ]
 
-        response = await self._client.chat.send_async(messages=messages, 
-                                                      max_completion_tokens=max_tokens, 
-                                                      top_p=top_p, 
-                                                      **self._get_params(self._model))
 
-        content = response.choices[0].message.content if response.choices else None
+        params = self._get_params(self._model)
+        if self._reasoning_effort is not None:
+            params["reasoning"] = {"effort": self._reasoning_effort}
+
+        response = await self._client.chat.send_async(messages=messages, 
+                                                      max_completion_tokens=self._max_tokens, 
+                                                      top_p=top_p, 
+                                                      **params)
+
+        choice = response.choices[0] if response.choices else None
+        content = choice.message.content if choice else None
+        finish_reason = getattr(choice, "finish_reason", None)
 
         if not content:
             raise RuntimeError("il modello non ha restituito testo")
 
         if isinstance(content, list):
             content = "".join(getattr(part, "text", None) or "" for part in content)
+
+        if not content or not content.strip():
+            if finish_reason == "length":
+                raise GenerationError(
+                    f"il modello ha finito i {self._max_tokens} token prima di scrivere la risposta "
+                    f"(probabilmente li ha spesi ragionando): aumenta max_tokens o riduci "
+                    f"reasoning_effort", finish_reason)
+            
+            raise GenerationError(f"il modello non ha restituito testo (finish_reason={finish_reason})",
+                                  finish_reason)
         
         return content
     
