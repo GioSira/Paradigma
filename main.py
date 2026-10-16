@@ -44,8 +44,7 @@ async def build_rag(settings: Settings) -> AsyncGenerator[RagService, None]:
         # Per nome: il quinto parametro di RagService e' chunker, non top_k.
         rag = RagService(vectordb,
                          models,
-                         settings.index_name,
-                         settings.system_prompt,
+                         settings.index_name,                         
                          top_k=settings.top_k,
                          max_tokens=settings.max_tokens,
                          top_n=settings.top_n)

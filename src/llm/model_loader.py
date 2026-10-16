@@ -4,11 +4,13 @@ from openrouter import OpenRouter
 from openrouter.utils.retries import BackoffStrategy, RetryConfig
 
 from dotenv import load_dotenv
-from typing import List, Any, Tuple, Optional
+from typing import List, Any, Tuple, Optional, Dict
 from uuid import UUID
 
 from src.llm.model_selector import ModelSelector
 from src.llm.errors import GenerationError
+from src.llm.conversation import Chat
+
 from src.chunks.document_chunk import DocumentChunk
 from src.collection.document import Document
 
@@ -24,10 +26,14 @@ class ModelLoader:
                  max_tokens: int = 1000,
                  timeout_seconds: float = 30,
                  retry_seconds: float = 60,
+                 memory_size: int = 5,
                  client: Optional[OpenRouter] = None):
 
         if timeout_seconds <= 0 or retry_seconds < 0:
             raise ValueError("timeout_seconds deve essere > 0 e retry_seconds >= 0")
+
+        if memory_size <= 0:
+            raise ValueError("memory size must be greater than 0")
         
         self._model = llm_model
         self._reranker = rerank_model
@@ -35,6 +41,8 @@ class ModelLoader:
         self._embed_dimension = embed_dimension
         self._reasoning_effort = reasoning_effort
         self._max_tokens = max_tokens
+
+        self._memory_size = memory_size
  
         self._timeout_ms = int(timeout_seconds * 1000)
         self._retries = RetryConfig(
@@ -97,7 +105,7 @@ class ModelLoader:
         return {
             "model": model.value,
             "retries": self._retries,
-            "timeout_ms": self._timeout_ms 
+            "timeout_ms": self._timeout_ms,
         }
 
 
@@ -118,11 +126,12 @@ class ModelLoader:
 
         params = self._get_params(self._embed_model)
         if self._embed_dimension is not None:
-            params["dimension"] = self._embed_dimension
+            params["dimensions"] = self._embed_dimension
 
         response = await self._client.embeddings.generate_async(input=text_docs, **params)
 
-        data = response.data
+        # ensure order
+        data = sorted(response.data, key=lambda item: item.index)
 
         if len(data) != len(documents):
             raise RuntimeError(f"attesi {len(documents)} embedding, ricevuti {len(response.data)}")
@@ -151,11 +160,11 @@ class ModelLoader:
 
         params = self._get_params(self._embed_model)
         if self._embed_dimension is not None:
-            params["dimension"] = self._embed_dimension
+            params["dimensions"] = self._embed_dimension
         
         response = await self._client.embeddings.generate_async(input=text_batch, **params)
         
-        data = response.data
+        data = sorted(response.data, key=lambda item: item.index)
         
         if len(data) != len(text_batch):
             raise RuntimeError(f"attesi {len(text_batch)} embedding, ricevuti {len(response.data)}")
@@ -188,32 +197,16 @@ class ModelLoader:
 
     # ============================== GENERATION ==============================
 
-
-    async def generate(self, system_prompt: str, query: str, context: List[str], top_p=0.95):
-
-        llm_context = "\n\n".join(context)
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Question: {query}\n\nContext:\n{llm_context}"}
-        ]
-
-
-        params = self._get_params(self._model)
-        if self._reasoning_effort is not None:
-            params["reasoning"] = {"effort": self._reasoning_effort}
+    async def _send_message(self, messages: Dict[str, str], params: Dict[str, Any], top_p: float):
 
         response = await self._client.chat.send_async(messages=messages, 
-                                                      max_completion_tokens=self._max_tokens, 
-                                                      top_p=top_p, 
-                                                      **params)
-
+                                                              max_completion_tokens=self._max_tokens, 
+                                                              top_p=top_p, 
+                                                              **params)
+        
         choice = response.choices[0] if response.choices else None
         content = choice.message.content if choice else None
         finish_reason = getattr(choice, "finish_reason", None)
-
-        if not content:
-            raise RuntimeError("il modello non ha restituito testo")
 
         if isinstance(content, list):
             content = "".join(getattr(part, "text", None) or "" for part in content)
@@ -221,12 +214,53 @@ class ModelLoader:
         if not content or not content.strip():
             if finish_reason == "length":
                 raise GenerationError(
-                    f"il modello ha finito i {self._max_tokens} token prima di scrivere la risposta "
-                    f"(probabilmente li ha spesi ragionando): aumenta max_tokens o riduci "
-                    f"reasoning_effort", finish_reason)
+                    f"il modello ha finito i {self._max_tokens} token prima di scrivere la risposta"
+                )
             
             raise GenerationError(f"il modello non ha restituito testo (finish_reason={finish_reason})",
-                                  finish_reason)
+                                    finish_reason)
+
+        return content
+
+
+    async def generate(self, query: str, context: List[str], chat: Chat, system_prompt: str, top_p=0.95):
+
+        llm_context = "\n\n".join(context)
+
+        chat.add(content=f"Domanda: {query}\n\nContesto:\n{llm_context}", role="user")
+
+        params = self._get_params(self._model)
+        if self._reasoning_effort is not None:
+            params["reasoning"] = {"effort": self._reasoning_effort}
+
+        last_messages = chat.last_messages(self._memory_size + 1) # add last question
+        content = await self._send_message(last_messages.to_model(system_prompt), params, top_p=top_p)
         
         return content
-    
+
+
+    async def condense_question(self, context: str, 
+                                system_prompt: str, 
+                                chat: Chat,
+                                top_p=0.95):
+
+        conversation = []
+        for message in chat.last_messages(self._memory_size).history:
+            role = "Utente" if message.role == "user" else "Assistente"
+            conversation.append(f"{role}: {message.content}")
+        conversation = "\n".join(conversation)
+
+        model_input = f"Conversazione:\n{conversation}\nUltima Domanda: {context}\n"
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": model_input}
+        ]
+
+        params = self._get_params(self._model)
+        if self._reasoning_effort is not None:
+            params["reasoning"] = {"effort": self._reasoning_effort}
+
+        content = await self._send_message(messages, params, top_p)
+
+        return content

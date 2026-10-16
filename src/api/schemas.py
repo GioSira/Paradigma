@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import List, Optional
+from typing import List, Optional, Literal
 from uuid import UUID
 
 from src.orchestrator.answer import Answer
@@ -36,11 +36,21 @@ class SourceOut(BaseModel):
     score: float
 
 
+class TurnIn(BaseModel):
+
+    """Un messaggio gia' scambiato nella conversazione."""
+    model_config = ConfigDict(extra="forbid")
+ 
+    role: Literal["user", "assistant"]
+    content: str = Field(..., min_length=1, max_length=8_000)
+
+
 class QuestionIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
  
     question: str = Field(..., min_length=1)
     document_id: Optional[UUID] = None   # per cercare in un solo documento
+    history: List[TurnIn] = Field(default_factory=list)
  
 
 class AnswerOut(BaseModel):

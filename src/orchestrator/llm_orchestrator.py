@@ -1,4 +1,7 @@
 from src.llm.model_loader import ModelLoader
+from src.llm.conversation import Chat, Message
+from src.llm.errors import GenerationError
+
 from src.chunks.document_chunk import DocumentChunk
 #from src.chunks.text_chunker import TextChunker
 from src.collection.document import Document
@@ -7,6 +10,9 @@ from src.orchestrator.answer import Answer, Source
 
 from typing import Dict, List, Optional, Sequence, Tuple
 from uuid import UUID
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 # Testo qualsiasi per scoprire la dimensione dei vettori del modello.
@@ -35,7 +41,6 @@ class RagService:
                  vectordb: PineconeDB,
                  models: ModelLoader,
                  index_name: str,
-                 system_prompt: str,
                  #chunker: Optional[TextChunker] = None,
                  top_k: int = 20,
                  top_n: int = 5,
@@ -52,7 +57,6 @@ class RagService:
         self._vectordb = vectordb
         self._models = models
         self._index = index_name
-        self._system_prompt = system_prompt
 
         #self._chunker = chunker or TextChunker()
         self._top_k = top_k
@@ -81,15 +85,18 @@ class RagService:
 
         # 1. Embedding prima di tutto: se OpenRouter fallisce, niente e' stato cancellato.
         vectors = await self._embed_batch([chunk.get_chunk_text() for chunk in chunks])
+        logger.info("ritornati vettori batch")
 
         # 2. Una sola cancellazione per documento, non una per chunk.
         document_ids: Dict[str, UUID] = {str(c.get_document_id()): c.get_document_id() for c in chunks}
         for document_id in document_ids.values():
             await self._vectordb.delete_chunks_of_document(self._index, namespace, document_id)
+            logger.info(f"Cancellati vettori per {document_id}")
 
         # 3. Scrittura. PineconeDB risponde False invece di sollevare: lo traduco qui.
         if not await self._vectordb.insert_chunks(self._index, namespace, chunks, vectors):
             raise IndexingError(list(document_ids.values()))
+        logger.info("Scritti vettori su DB Pinecone")
 
         return len(chunks)
 
@@ -125,27 +132,49 @@ class RagService:
 
     # ============================== DOMANDE ==============================
 
-    async def ask(self, namespace: str, question: str, document_id: Optional[UUID] = None) -> Answer:
+    async def ask(self, namespace: str, question: str, 
+                  system_prompt: str,
+                  condense_prompt: str,
+                  document_id: Optional[UUID] = None, 
+                  history: Optional[Sequence[Message]] = None) -> Answer:
 
         question = (question or "").strip()
         if not namespace or not question:
             raise ValueError("servono un namespace e una domanda non vuota")
 
         # 1. Ricerca
+        
+        chat = Chat.of(history)
 
-        query_vector = await self._models.embed_text(question)
+        search_question = question
+        user_last_message = chat.last_user_message()
+        if user_last_message:
+            try:
+                search_question = await self._models.condense_question(question, condense_prompt, chat)
+                logger.info(f"Domanda cambiata. Nuova domanda con contesto: {search_question}")
+            except GenerationError:
+                search_question = f"{user_last_message}\n{question}"
+                logger.info("Generation error: provo a concatenare")
+
+
+        query_vector = await self._models.embed_text(search_question)
         doc_filter = {"document_id": {"$eq": str(document_id)}} if document_id is not None else None
-        candidates = await self._vectordb.search_chunks(self._index, namespace, query_vector,
-                                                        top_k=self._top_k, filter=doc_filter)
+        candidates: List[Tuple[DocumentChunk, float]] = await self._vectordb.search_chunks(self._index, 
+                                                                                           namespace, 
+                                                                                           query_vector,
+                                                                                           top_k=self._top_k, 
+                                                                                           filter=doc_filter)
+        #logger.info("Ritornati i seguenti candidati:\n\n" + "\n".join([f"[{score}] {sent.text}" for (sent, score) in candidates]))
 
         # nessun dato trovato, non rispondo
         if not candidates:
             return Answer(text=NO_ANSWER, sources=[])
 
         # 2. Rerank
-        ranked: List[Tuple[DocumentChunk, float]] = await self._models.rerank(question,
+        ranked: List[Tuple[DocumentChunk, float]] = await self._models.rerank(search_question,
                                            [chunk for chunk, _ in candidates], 
                                            top_n=self._top_n)
+        #logger.info("Ritornati i seguehnti candidati dopo rerank:\n\n" + "\n".join([f"[{score}] {chunk.text}" for chunk, score in ranked]))
         
         if self._min_score is not None:
             ranked = [(chunk, score) for chunk, score in ranked if score >= self._min_score]
@@ -166,8 +195,7 @@ class RagService:
 
         context = [f"[{source.number}] {source.text}" for source in sources]
 
-        text = await self._models.generate(self._system_prompt,
-                                           question,
-                                           context)
+        text = await self._models.generate(question, context, chat, system_prompt)
+        logger.info(f"Generata risposta: {text}")
 
         return Answer(text=text, sources=sources)

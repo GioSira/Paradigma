@@ -8,6 +8,7 @@ from src.api.schemas import ErrorOut, ChunksIn, IndexedDocument, AnswerOut, Ques
 from src.api.settings import Settings
 
 from src.chunks.document_chunk import DocumentChunk
+from src.llm.conversation import Message
 
 
 ERRORS = {
@@ -61,5 +62,14 @@ async def ask(body: QuestionIn, namespace: str = Namespace,
               settings: Settings = Depends(get_settings)):
 
     _check_size(body.question, settings.max_question_chars, "domanda")
-    answer = await rag.ask(namespace, body.question, document_id=body.document_id)
+
+    history = [Message(role=turn.role, content=turn.content) for turn in body.history]
+
+    answer = await rag.ask(namespace, 
+                           body.question, 
+                           settings.system_prompt,
+                           settings.condens_prompt,
+                           document_id=body.document_id, 
+                           history=history)
+    
     return AnswerOut.from_domain(answer)

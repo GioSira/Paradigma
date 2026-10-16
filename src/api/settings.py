@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from dataclasses import dataclass
 
-from src.api.prompt import SYSTEM_PROMPT
+from src.api.prompt import SYSTEM_PROMPT, CONDENSE_PROMPT
 
 
 def _env_int(name: str, default: int) -> int:
@@ -27,6 +27,7 @@ class Settings:
     max_question_chars: int = 2_000
     max_tokens: int = 1000
     system_prompt: str = SYSTEM_PROMPT
+    condens_prompt: str = CONDENSE_PROMPT
 
     @classmethod
     def from_env(cls) -> "Settings":
