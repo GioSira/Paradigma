@@ -1,5 +1,6 @@
 from src.llm.model_loader import ModelLoader
 from src.llm.conversation import Chat, Message
+from src.llm.jev_loader import JevLoader, JevSelector
 from src.llm.errors import GenerationError
 
 from src.chunks.document_chunk import DocumentChunk
@@ -39,7 +40,8 @@ class RagService:
 
     def __init__(self,
                  vectordb: PineconeDB,
-                 models: ModelLoader,
+                 llm_model: ModelLoader,
+                 jev_model: JevLoader,
                  index_name: str,
                  #chunker: Optional[TextChunker] = None,
                  top_k: int = 20,
@@ -55,8 +57,9 @@ class RagService:
             raise ValueError("embed_batch_size deve essere almeno 1")
 
         self._vectordb = vectordb
-        self._models = models
+        self._models = llm_model
         self._index = index_name
+        self._jev = jev_model
 
         #self._chunker = chunker or TextChunker()
         self._top_k = top_k
@@ -130,6 +133,39 @@ class RagService:
         return vectors
 
 
+    # ============================== JEV EVAL =============================
+
+    async def _evaluate_query(self, question: str, answer: str, threshold: float = 0.5) -> bool:
+
+        response = await self._jev.noul(
+            state=answer,
+            instruction=f"Does the text answer the question \"{question}\"?"
+        )
+
+        return response > threshold
+
+
+    async def _evaluate_candidates(self, question: str, candidates: List[Tuple[DocumentChunk, float]]):
+
+        valid_candidates = []
+
+        for (candidate, score) in candidates:
+            
+            response = await self._jev.choice(
+                state=candidate.get_chunk_text().strip(),
+                instruction=f"Can the text be used to anwer the question?\nQuestion: {question}",
+                criteria={
+                    "useful": "Yes, the text can be used to anwser the question",
+                    "unuseful": "No, the text cannot be used to answer the question"
+                }
+            )
+
+            if response == "useful":
+                valid_candidates.append((candidate, score))
+
+        return valid_candidates
+
+
     # ============================== DOMANDE ==============================
 
     async def ask(self, namespace: str, question: str, 
@@ -164,10 +200,17 @@ class RagService:
                                                                                            query_vector,
                                                                                            top_k=self._top_k, 
                                                                                            filter=doc_filter)
+        
         #logger.info("Ritornati i seguenti candidati:\n\n" + "\n".join([f"[{score}] {sent.text}" for (sent, score) in candidates]))
+        logger.info(f"Ritornati {len(candidates)} candidati possibili su {self._top_k}")
+
+        if candidates:
+            logger.info("Procedo a valutarli con JEV")
+            candidates = self._evaluate_candidates(search_question, candidates)
+            logger.info(f"Ritornati {len(candidates)} candidati validi su {self._top_k}")
 
         # nessun dato trovato, non rispondo
-        if not candidates:
+        if not candidates or len(candidates) == 0:
             return Answer(text=NO_ANSWER, sources=[])
 
         # 2. Rerank
@@ -175,6 +218,7 @@ class RagService:
                                            [chunk for chunk, _ in candidates], 
                                            top_n=self._top_n)
         #logger.info("Ritornati i seguehnti candidati dopo rerank:\n\n" + "\n".join([f"[{score}] {chunk.text}" for chunk, score in ranked]))
+        logger.info(f"Ritornati {len(ranked)} candidati su {self._top_n}")
         
         if self._min_score is not None:
             ranked = [(chunk, score) for chunk, score in ranked if score >= self._min_score]
@@ -195,7 +239,14 @@ class RagService:
 
         context = [f"[{source.number}] {source.text}" for source in sources]
 
-        text = await self._models.generate(question, context, chat, system_prompt)
-        logger.info(f"Generata risposta: {text}")
 
-        return Answer(text=text, sources=sources)
+        while True:
+            answer = await self._models.generate(question, context, chat, system_prompt)
+            logger.info(f"Generata risposta: {answer}")
+
+            is_valid = self._evaluate_query(search_question, answer)
+            logger.info("La risposta e': " + "valida" if is_valid else "invalida. Rigenero.")
+
+            if is_valid: break
+
+        return Answer(text=answer, sources=sources)

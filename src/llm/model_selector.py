@@ -14,3 +14,16 @@ class ModelSelector(Enum):
     # Embedding: un modello di chat non produce embedding.
     NEMOTRON_EMBED = "nvidia/nemotron-3-embed-1b:free"
     VOYAGE_EMBED_LITE = "voyageai/voyage-4-lite"   # 256, 512, 1024 o 2048 dimensioni
+
+
+
+class JevSelector(Enum):
+
+    # select the best model automatically
+    ROUTER = "typesafe/jev-router"
+
+    # select jev 1.14
+    BASIC = "typesafe/jev-1.14"
+
+    # always select the latest model
+    LATEST = "typesafe/jev-latest"

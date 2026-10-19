@@ -11,8 +11,11 @@ from pinecone.errors import PineconeError
  
 from src.api.routes import router
 from src.api.settings import Settings
+
 from src.llm.model_loader import ModelLoader
 from src.llm.errors import GenerationError
+from src.llm.jev_loader import JevLoader
+
 from src.orchestrator.llm_orchestrator import IndexingError, RagService
 from src.vectordb.pinecone_db import PineconeDB
 
@@ -34,20 +37,24 @@ async def build_rag(settings: Settings) -> AsyncGenerator[RagService, None]:
 
     logger.info("Starting up system...")
 
-    models = ModelLoader()
+    llm_model = ModelLoader()
     vectordb = PineconeDB()
+    jev_model = JevLoader()
 
     logger.info("LLM and DB online, starting pipeline...")
 
     try:
 
         # Per nome: il quinto parametro di RagService e' chunker, non top_k.
-        rag = RagService(vectordb,
-                         models,
-                         settings.index_name,                         
-                         top_k=settings.top_k,
-                         max_tokens=settings.max_tokens,
-                         top_n=settings.top_n)
+        rag = RagService(
+            vectordb=vectordb,
+            llm_model=llm_model,
+            jev_model=jev_model,
+            index_name=settings.index_name,                         
+            top_k=settings.top_k,
+            max_tokens=settings.max_tokens,
+            top_n=settings.top_n
+        )
 
         dimension = await rag.setup()
 
@@ -60,13 +67,14 @@ async def build_rag(settings: Settings) -> AsyncGenerator[RagService, None]:
 
         logger.info("Closing DB and LLM connection...")
         await vectordb.aclose()
-        await models.aclose()
+        await llm_model.aclose()
+        await jev_model.aclose()
         logger.info("Connection closed")
 
 
 def create_app(settings: Optional[Settings] = None, rag_factory: RagFactory = build_rag) -> FastAPI:
 
-    settings = settings or Settings.from_env()
+    settings = settings or Settings()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
