@@ -27,4 +27,10 @@ graphdb/
 graphdb/__init__.py
 graphdb/db.py
 cache/
+
+# for testing
 examples/
+
+# future
+queue/
+

@@ -6,12 +6,12 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "asyncpg>=0.31.0",
+    "celery[redis]>=5.6.3",
     "dotenv>=0.9.9",
     "fastapi>=0.143.0",
     "httpx>=0.28.1",
     "hypothesis>=6.168.3",
     "openrouter>=0.10.8",
-    "pika>=1.4.4",
     "pinecone>=10.0.0",
     "pwdlib[argon2]>=0.3.1",
     "pydantic-settings>=2.15.0",
