@@ -18,7 +18,7 @@ from src.collection.document import Document
 class ModelLoader:
 
     def __init__(self,
-                 llm_model: ModelSelector = ModelSelector.NEMOTRON_3_5_LIGHTNING,
+                 llm_model: ModelSelector = ModelSelector.NEMOTRON_3_ULTRA,
                  rerank_model: ModelSelector = ModelSelector.VOYAGE_RERANK,
                  embed_model: ModelSelector = ModelSelector.NEMOTRON_EMBED,
                  embed_dimension: Optional[int] = None,
@@ -239,7 +239,7 @@ class ModelLoader:
         return content
 
 
-    async def condense_question(self, context: str, 
+    async def expanse_question(self, context: str, 
                                 system_prompt: str, 
                                 chat: Chat,
                                 top_p=0.95):

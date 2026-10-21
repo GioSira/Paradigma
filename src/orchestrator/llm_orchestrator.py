@@ -1,6 +1,6 @@
 from src.llm.model_loader import ModelLoader
 from src.llm.conversation import Chat, Message
-from src.llm.jev_loader import JevLoader, JevSelector
+from src.llm.jev_loader import JevLoader
 from src.llm.errors import GenerationError
 
 from src.chunks.document_chunk import DocumentChunk
@@ -139,10 +139,11 @@ class RagService:
 
         response = await self._jev.noul(
             state=answer,
-            instruction=f"Does the text answer the question \"{question}\"?"
+            instruction=f"Does the text answer the question: \"{question}\"?"
         )
+        logging.info("JEV -> " + response)
 
-        return response > threshold
+        return response.confidence > threshold
 
 
     async def _evaluate_candidates(self, question: str, candidates: List[Tuple[DocumentChunk, float]]):
@@ -153,14 +154,14 @@ class RagService:
             
             response = await self._jev.choice(
                 state=candidate.get_chunk_text().strip(),
-                instruction=f"Can the text be used to anwer the question?\nQuestion: {question}",
+                instruction=f"Does it answer the question?\nQuestion: {question}\n",
                 criteria={
-                    "useful": "Yes, the text can be used to anwser the question",
-                    "unuseful": "No, the text cannot be used to answer the question"
+                    "yes": "The text answers the question completely or partialy.",
+                    "no": "The text does not anwer the question, neither completely nor partially."
                 }
             )
 
-            if response == "useful":
+            if response.choice == "yes":
                 valid_candidates.append((candidate, score))
 
         return valid_candidates
@@ -183,14 +184,15 @@ class RagService:
         chat = Chat.of(history)
 
         search_question = question
-        user_last_message = chat.last_user_message()
-        if user_last_message:
-            try:
-                search_question = await self._models.condense_question(question, condense_prompt, chat)
-                logger.info(f"Domanda cambiata. Nuova domanda con contesto: {search_question}")
-            except GenerationError:
-                search_question = f"{user_last_message}\n{question}"
-                logger.info("Generation error: provo a concatenare")
+        try:
+            search_question = await self._models.expanse_question(question, condense_prompt, chat)
+            logger.info(f"Domanda cambiata. Nuova domanda espansa: {search_question}")
+        except GenerationError:
+            logger.info("Generation error: provo a concatenare")
+            user_message = chat.last_user_message()
+            if user_message:
+                search_question = f"{user_message}\n{question}"
+                logger.info("Query concatenata con ultimo messaggio dell'utente")
 
 
         query_vector = await self._models.embed_text(search_question)
@@ -204,27 +206,30 @@ class RagService:
         #logger.info("Ritornati i seguenti candidati:\n\n" + "\n".join([f"[{score}] {sent.text}" for (sent, score) in candidates]))
         logger.info(f"Ritornati {len(candidates)} candidati possibili su {self._top_k}")
 
-        if candidates:
-            logger.info("Procedo a valutarli con JEV")
-            candidates = self._evaluate_candidates(search_question, candidates)
-            logger.info(f"Ritornati {len(candidates)} candidati validi su {self._top_k}")
-
         # nessun dato trovato, non rispondo
         if not candidates or len(candidates) == 0:
             return Answer(text=NO_ANSWER, sources=[])
 
-        # 2. Rerank
-        ranked: List[Tuple[DocumentChunk, float]] = await self._models.rerank(search_question,
-                                           [chunk for chunk, _ in candidates], 
-                                           top_n=self._top_n)
+        # 1.5 JEV filtering
+        logger.info("Procedo a valutarli con JEV")
+        jev_candidates = await self._evaluate_candidates(search_question, candidates)
+        logger.info(f"Ritornati {len(jev_candidates)} candidati validi su {self._top_k}")
+
+        # check nel caso jev sbagli
+        candidates = jev_candidates if len(jev_candidates) > 0 else candidates
+
+        # 2. Rerank solo se jev ha dato piu' di top_n candidati
+        candidates: List[Tuple[DocumentChunk, float]] = await self._models.rerank(search_question,
+                                        [chunk for chunk, _ in candidates], 
+                                        top_n=self._top_n)
         #logger.info("Ritornati i seguehnti candidati dopo rerank:\n\n" + "\n".join([f"[{score}] {chunk.text}" for chunk, score in ranked]))
-        logger.info(f"Ritornati {len(ranked)} candidati su {self._top_n}")
-        
+        logger.info(f"Ritornati {len(candidates)} candidati su {self._top_n}")
+    
         if self._min_score is not None:
-            ranked = [(chunk, score) for chunk, score in ranked if score >= self._min_score]
+            candidates = [(chunk, score) for chunk, score in candidates if score >= self._min_score]
 
         # Nessun dato abbastanza pertinente
-        if not ranked:
+        if not candidates or len(candidates) == 0:
             return Answer(text=NO_ANSWER, sources=[])
 
         # 3. Generazione
@@ -234,19 +239,18 @@ class RagService:
                    chunk_id=chunk.get_chunk_id(),
                    text=chunk.get_chunk_text(),
                    score=score)
-            for n, (chunk, score) in enumerate(ranked, start=1)
+            for n, (chunk, score) in enumerate(candidates, start=1)
         ]
 
         context = [f"[{source.number}] {source.text}" for source in sources]
 
+        #while True:
+        answer = await self._models.generate(question, context, chat, system_prompt)
+        logger.info(f"Generata risposta: {answer}")
 
-        while True:
-            answer = await self._models.generate(question, context, chat, system_prompt)
-            logger.info(f"Generata risposta: {answer}")
+        #    is_valid = self._evaluate_query(search_question, answer)
+        #    logger.info("La risposta e': " + "valida" if is_valid else "invalida. Rigenero.")
 
-            is_valid = self._evaluate_query(search_question, answer)
-            logger.info("La risposta e': " + "valida" if is_valid else "invalida. Rigenero.")
-
-            if is_valid: break
+        #    if is_valid: break
 
         return Answer(text=answer, sources=sources)

@@ -1,4 +1,5 @@
 from typing import List, Optional
+from pydantic import Field, field_validator
 from src.roles.user import User
 from src.corsi.corso import Corso
 from src.subscription.abbonamento import Abbonamento
@@ -7,15 +8,15 @@ from uuid import UUID
 
 class Student(User):
 
-    corsi: List[Corso]
-    abbonamento: Optional[Abbonamento]
+    corsi: List[Corso] = Field(default_factory=list)
+    abbonamento: Optional[Abbonamento] = None
 
     
     # ----------------------------- COSTRUZIONE -----------------------------
 
     @classmethod
     def create(cls, user_id: UUID, name: str, surname: str, email: str, password: str,
-               corsi: List[Corso] = [], abbonamento: Optional[Abbonamento] = None) -> "Student":
+               corsi: Optional[List[Corso]] = None, abbonamento: Optional[Abbonamento] = None) -> "Student":
         """Registrazione di un nuovo utente, a partire dalla password in chiaro.
 
         Per ricaricare un utente dal database si usa invece il costruttore,
@@ -31,6 +32,12 @@ class Student(User):
             abbonamento=abbonamento
         )
 
+
+    @field_validator("corsi", mode="before")
+    @classmethod
+    def _corsi_empty(cls, value):
+        return list() if not value else value
+    
 
     # ----------------------------- GETTER/SETTER ----------------------------------
     

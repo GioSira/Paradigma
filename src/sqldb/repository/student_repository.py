@@ -7,7 +7,7 @@ from src.corsi.corso import Corso
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import delete, func, insert, select, update, true
+from sqlalchemy import delete, func, insert, select, update, true, exists
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -76,16 +76,14 @@ class StudentRepository(UserRepository):
         student_id = student.get_user_id()
 
         user_values = self._to_row(student, for_update=True)
-        student_values = self._student_to_row(student)
 
         statements = (
-            update(_USERS).values(**user_values).where(_USERS.c.user_id == student_id, _IS_STUDENT),
-            update(_STUDENTS).values(**student_values).where(_STUDENTS.c.user_id == student_id)
+            update(_USERS).values(**user_values).where(_USERS.c.user_id == student_id, _IS_STUDENT)
         )
 
         results = await self._write_all(
             student,
-            *statements
+            statements
         )
 
         for r in results:
@@ -129,9 +127,9 @@ class StudentRepository(UserRepository):
             .order_by(*self._corsi_order())
         )
 
-        rows = (await self._session.execute(*query)).mappings().all()
+        rows = (await self._session.execute(query)).mappings().all()
 
-        return [Corso.from_db(**row) for row in rows]
+        return [Corso.from_db(dict(row)) for row in rows]
 
 
     async def get_enrolled_students(self, corso_id: UUID):
@@ -143,7 +141,7 @@ class StudentRepository(UserRepository):
             .order_by(*self._order())
         )
 
-        return await self._fetch_all(*query)
+        return await self._fetch_all(query)
 
 
     # ================================= ISCRIZIONI ==============================
@@ -160,8 +158,8 @@ class StudentRepository(UserRepository):
             .on_conflict_do_nothing()
         )
 
-        result = await self._session.execute(*statement)
-        if result == 1:
+        result = await self._session.execute(statement)
+        if result.rowcount == 1:
             return True
 
         if await self._is_enrolled(student_id, corso_id):
@@ -179,26 +177,24 @@ class StudentRepository(UserRepository):
             delete(ISCRIZIONE).where(ISCRIZIONE.c.student_id == student_id, ISCRIZIONE.c.corso_id == corso_id)
         )
 
-        result = await self._session.execute(*statement)
+        result = await self._session.execute(statement)
 
         return result.rowcount == 1
 
 
+    async def _exists(self, condition) -> bool:
+
+        return (await self._session.execute(select(exists().where(condition)))).scalar_one()
+
+
     async def _is_enrolled(self, student_id: UUID, corso_id: UUID):
 
-        query = (
-            self._select()
-            .join(ISCRIZIONE, ISCRIZIONE.c.student_id == student_id)
-            .where(ISCRIZIONE.c.corso_id == corso_id)
-            .order_by(*self._corsi_order())
-        )
-
-        result = await self._session.execute(*query)
-
-        return result.first() is not None
+        condition = (ISCRIZIONE.c.student_id == student_id) & (ISCRIZIONE.c.corso_id == corso_id)
+        return await self._exists(condition)
 
 
     # ================================= UTILS ==============================
+
 
     @staticmethod
     def _domain_error(error: IntegrityError, user: Student):

@@ -11,7 +11,7 @@ class JevLoader:
 
 
     def __init__(self,
-                model: JevSelector = JevSelector.ROUTER,
+                model: JevSelector = JevSelector.LATEST,
                 timeout_seconds: float = 30,
                 max_retries: int = 3,
                 retry_seconds: float = 60
@@ -71,7 +71,7 @@ class JevLoader:
                 "question_choice": {
                     "type": "choice",
                     "instructions": instruction,
-                    "critiria": criteria
+                    "criteria": criteria
                 }
             },
             **self._get_params()

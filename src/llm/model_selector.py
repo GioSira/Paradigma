@@ -4,7 +4,8 @@ from enum import Enum
 class ModelSelector(Enum):
 
     # Chat
-    NEMOTRON_3_SUPER = "nvidia/nemotron-3-super-120b-a12b:free"
+    NEMOTRON_3_ULTRA = "nvidia/nemotron-3-ultra-550b-a55b:free"
+    LIQUID_LFM = "liquid/lfm-2.5-2.6b:free"
     NEMOTRON_3_5_LIGHTNING = "nvidia/nemotron-3.5-lightning:free"
     THINKING_MACHINE = "thinkingmachines/inkling:free"
 
@@ -19,11 +20,8 @@ class ModelSelector(Enum):
 
 class JevSelector(Enum):
 
-    # select the best model automatically
-    ROUTER = "typesafe/jev-router"
-
     # select jev 1.14
     BASIC = "typesafe/jev-1.14"
 
     # always select the latest model
-    LATEST = "typesafe/jev-latest"
+    LATEST = "~typesafe/jev-latest"

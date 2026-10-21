@@ -11,10 +11,16 @@ class Corso(BaseModel):
 
     id: UUID
     title: str
-    docente: List[Tutor] = Field(..., min_length=1)
+    docente: List[Tutor] = Field(default_factory=list)
     descrizione: str
     data_inizio: Optional[AwareDatetime]
     data_fine: Optional[AwareDatetime]
+
+
+    @field_validator("docente", mode="before")
+    @classmethod
+    def _docente_not_empty(cls, value):
+        return list() if not value else value
 
 
 

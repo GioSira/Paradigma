@@ -36,6 +36,7 @@ DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(not DATABASE_URL, reason="TEST_DATABASE_URL non impostata"),
+    pytest.mark.usefixtures("database"),     # conftest.py: lock + tabelle ricreate una volta
 ]
 
 # argon2 veloce, come in test_user.py: i costi di produzione renderebbero lenti i test.
