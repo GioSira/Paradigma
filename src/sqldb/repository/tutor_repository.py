@@ -1,15 +1,15 @@
 from src.sqldb.tables import TutorRow, UserRow
 from src.sqldb.repository.user_repository import UserRepository, _constraint_name
+from src.sqldb.tables import CORSO_ULTIMO_DOCENTE
+from src.sqldb.errors import UltimoDocente
 from src.roles.tutor import Tutor
-from src.roles.user import User
 
 from typing import List
 from uuid import UUID
 
 from sqlalchemy import delete, func, insert, select, update, and_, exists, literal
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
-from src.sqldb.errors import EmailAlreadyRegistered, UserAlreadyExists, UserNotFound
+from src.sqldb.errors import UserAlreadyExists, UserNotFound
 
 
 
@@ -139,15 +139,31 @@ class TutorRepository(UserRepository):
 
 
 
+    #async def delete(self, tutor_id: UUID) -> bool:
+
+    #    statement = delete(_USERS).where(_USERS.c.user_id == tutor_id, _USERS.c.user_id.in_(select(_TUTORS.c.user_id)))
+
+    #    result = await self._session.execute(statement)
+
+    #    return result.rowcount == 1
+
+
     async def delete(self, tutor_id: UUID) -> bool:
 
-        statement = delete(_USERS).where(_USERS.c.user_id == tutor_id, _USERS.c.user_id.in_(select(_TUTORS.c.user_id)))
+        statement = delete(_USERS).where(_USERS.c.user_id == tutor_id, 
+                                         _USERS.c.user_id.in_(select(_TUTORS.c.user_id)
+                                        )
+        )
 
-        result = await self._session.execute(statement)
-
+        try:
+            async with self._session.begin_nested():
+                result = await self._session.execute(statement)
+        except IntegrityError as error:
+            if _constraint_name(error) == CORSO_ULTIMO_DOCENTE:
+                raise UltimoDocente(self._corso_id_from(error)) from error
+            raise
+        
         return result.rowcount == 1
-
-
 
 
     # ================================= UTILS ==============================
@@ -171,4 +187,10 @@ class TutorRepository(UserRepository):
             return UserAlreadyExists(user.get_user_id())
 
         return UserRepository._domain_error(error, user)
+
+    @staticmethod
+    def _corso_id_from(error: IntegrityError) -> UUID:
+        """Il trigger corso_ultimo_docente mette l'id del corso nel DETAIL."""
+        original = getattr(error.orig, "__cause__", None) or error.orig
+        return UUID(getattr(original, "detail", None) or getattr(getattr(original, "diag", None), "message_detail", ""))
         

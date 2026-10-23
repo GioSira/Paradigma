@@ -15,7 +15,7 @@ class DocumentChunk(BaseModel):
     chunk_id: UUID
     # id del documento originale
     document_id: UUID
-    last_modified: Optional[datetime]
+    last_modified: Optional[datetime] = None
     start_idx: int = Field(..., ge=0)
     end_idx: int = Field(..., ge=0)
     text: str = Field(..., min_length=1)

@@ -1,6 +1,7 @@
 import asyncio
-from pinecone import PineconeAsyncio, ServerlessSpec
+from pinecone import PineconeAsyncio, ServerlessSpec, DenseVectorQuery, TextQuery
 from pinecone.exceptions import NotFoundException
+from pinecone.schema_builder import SchemaBuilder
 
 from uuid import UUID
 
@@ -8,9 +9,11 @@ from typing import List, Dict, Any, Sequence, Optional, Mapping, Tuple, Union
 
 from dotenv import load_dotenv
 from src.chunks.document_chunk import DocumentChunk
+from src.chunks.legal_chunk import LegalChunk
 from src.collection.document import Document
 from src.vectordb.errors import IndexNotFoundError, DimensionMismatchError
 from src.vectordb.utils import _batches, _chunk_to_record, _create_args, _read, hit_to_chunk
+from src.vectordb.hybrid_utils import _chunk_to_record_bm25, _reciprocal_rank_fusion
 from src.vectordb.index_mode import IndexMode
 
 
@@ -28,9 +31,11 @@ class PineconeDB:
 
     def __init__(self, cloud: str ='aws', region: str ='us-east-1',
                  model: Optional[str] = None,
+                 sparse_model: Optional[str] = None,
                  field_value: str = "chunk_text",
                  metric: str = "cosine",
                  emb_size: int = 300,
+                 mode: IndexMode = IndexMode.LLM,
                  client: Optional[PineconeAsyncio] = None):
         """
         model / field_value: solo per gli indici con embedding integrato
@@ -43,11 +48,13 @@ class PineconeDB:
         # ServerlessSpec accetta solo argomenti con nome.
         self._specs = ServerlessSpec(cloud=cloud, region=region)
         self._model = model
+        self._sparse_model = sparse_model
         self._field_value = field_value
         self._client = client or self._connect()
         self._indexes: Dict[str, Any] = {}
         self._metric = metric
         self._emb_size = emb_size
+        self._mode = mode
         self._lock = asyncio.Lock()
 
 
@@ -105,18 +112,17 @@ class PineconeDB:
 
 
     async def create_index(self, index_name: str,
-                           mode: IndexMode = IndexMode.LLM,
                            dimension: Optional[int] = None) -> bool:
 
         """Crea l'indice se non esiste. True se e' stato creato ora."""
 
-        if not isinstance(mode, IndexMode):
-            raise ValueError(f"Modalita' {mode!r} non supportata. Usa un valore di IndexMode.")
+        if not isinstance(self._mode, IndexMode):
+            raise ValueError(f"Modalita' {self._mode!r} non supportata. Usa un valore di IndexMode.")
 
-        if mode is IndexMode.BM25_HYB:
-            return await self._create_index_bm25_or_vectors(index_name)
+        if self._mode is IndexMode.BM25_HYB:
+            return await self._create_index_bm25_and_vectors(index_name)
 
-        if mode is IndexMode.PINECONE:
+        if self._mode is IndexMode.PINECONE:
             return await self._create_index_for_model(index_name)
 
         # IndexMode.LLM: indice a vettori, gli embedding arrivano da fuori.
@@ -151,9 +157,33 @@ class PineconeDB:
         return True
 
 
-    async def _create_index_bm25_or_vectors(self, index_name):
+    async def _create_index_bm25_and_vectors(self, index_name, language="it"):
 
-        raise NotImplementedError("La modalita' ibrida BM25 non e' ancora implementata")
+        if await self._client.has_index(index_name):
+            return False
+
+        if not self._model or not self._sparse_model:
+            raise ValueError("per un indice con embedding integrato serve model (es. 'llama-text-embed-v2') e BM25")
+
+        schema = SchemaBuilder()\
+                    .add_string_field(name="document_name", language=language, stemming=True, stop_words=True, full_text_search={})\
+                    .add_string_field(name="document_title", language=language, stemming=True, stop_words=True, full_text_search={})\
+                    .add_string_field(name="chunk_text", language=language, stemming=True, stop_words=True, full_text_search={})\
+                    .add_dense_vector_field(name="embedding", dimension=self._emb_size, metric=self._metric)\
+                    .build()
+
+        await self._client.indexes.create(
+            name=index_name,
+            schema=schema,
+            deployment={
+                "deployment_type": "managed", 
+                "cloud": self._cloud, 
+                "region": self._region
+            }
+        )
+
+        return True
+        
 
 
     async def ensure_index(self, index_name: str, dimension: int) -> bool:
@@ -173,7 +203,7 @@ class PineconeDB:
 
             return False
 
-        return await self.create_index(index_name, IndexMode.LLM, dimension=dimension)
+        return await self.create_index(index_name, self._mode, dimension=dimension)
 
 
     # ============================== WRITING ==============================
@@ -205,12 +235,12 @@ class PineconeDB:
         if not documents or len(documents) == 0:
             return False
 
+        index = await self._index(index_name)
+
         try:
 
-            index = await self._index(index_name)
-
             for batch in _batches(documents, size=self.MAX_RECORDS_PER_BATCH):
-                await index.upsert_records(namespace=namespace, records=list(batch))
+                await index.documents.upsert(namespace=namespace, documents=list(batch))
 
             return True
 
@@ -230,14 +260,24 @@ class PineconeDB:
         if len(chunks) != len(vectors):
             raise ValueError(f"{len(chunks)} chunk ma {len(vectors)} vettori")
 
-        # A parita' di id vince l'ultimo: nessun upsert doppio.
-        records = {str(chunk.get_chunk_id()): _chunk_to_record(chunk, vector)
-                   for chunk, vector in zip(chunks, vectors)}
+        if self._mode == IndexMode.LLM:
 
-        if not records:
-            return False
+            # A parita' di id vince l'ultimo: nessun upsert doppio.
+            records = {str(chunk.get_chunk_id()): _chunk_to_record(chunk, vector)
+                    for chunk, vector in zip(chunks, vectors)}
 
-        return await self.insert_vectors(index_name, namespace, list(records.values()))
+            if not records: return False
+            return await self.insert_vectors(index_name, namespace, list(records.values()))
+
+        if self._mode == IndexMode.BM25_HYB:
+
+            records = {{str(chunk.get_chunk_id()): _chunk_to_record_bm25(chunk, vector)}
+                       for chunk, vector in zip(chunks, vectors)}
+
+            if not records: return False
+            return await self.insert_documents(index_name, namespace, list(records.values()))
+
+        raise ValueError(f"mode {self._mode} non supportato: usa {IndexMode.LLM} o {IndexMode.BM25_HYB}")
 
 
     async def delete_chunks_of_document(self, index_name: str, namespace: str, document_id: UUID) -> bool:
@@ -356,8 +396,64 @@ class PineconeDB:
                  float(_read(hit, "score", "_score")))
                 for hit in response.result.hits]
 
+    async def search_chunks(
+        self, 
+        index_name: str, 
+        namespace: str, 
+        query: Sequence[float],
+        query_text: Optional[str] = None, 
+        top_k: int = 10, 
+        filter: Optional[Mapping[str, Any]] = None,
+        rerank_model: Optional[str] = None,
+        rank_field: Union[str, List[str], None] = None,
+        top_n: Optional[int] = None,
+        rerank_query: Optional[str] = None
+    ):
 
-    async def search_chunks(self, index_name: str, namespace: str, query: Sequence[float],
+        if self._mode == IndexMode.LLM:
+            return await self.search_chunks_vector(index_name, namespace, query, top_k,
+                                                   filter, rerank_model, rank_field, top_n,
+                                                   rerank_query)
+
+        if self._mode == IndexMode.BM25_HYB:
+            return await self.search_chunks_hybrid(index_name, namespace, query, query_text, top_k, filter)
+
+        raise ValueError(f"mode {self._mode} non supportato: usa {IndexMode.LLM} o {IndexMode.BM25_HYB}")
+
+
+    async def search_chunks_hybrid(self, index_name: str, 
+                                   namespace: str, 
+                                   query_vector: Sequence[float],
+                                   query_text: str,
+                                   top_k: int = 10,
+                                   filter: Optional[Dict[str, Any]] = None,
+                                   rrf_k: int = 60) -> List[Tuple[DocumentChunk, float]]:
+
+        if top_k < 1:
+            raise ValueError("top_k deve essere almeno 1")
+
+        index = await self._index(index_name)
+        common = dict(namespace=namespace, top_k=top_k, filter=filter, include_fields=["document_name", "document_title"])
+ 
+        searches = [index.documents.search(
+            score_by=[DenseVectorQuery(field="embedding", values=[float(x) for x in query_vector])], 
+            **common)]
+        
+        if query_text and query_text.strip():
+            searches.append(index.documents.search(
+                score_by=[TextQuery(query=query_text, fields=["text", "document_name", "document_title"])],
+                **common))
+ 
+        # Le due richieste partono insieme: la latenza e' quella della piu' lenta.
+        responses = await asyncio.gather(*searches)
+
+        fused = _reciprocal_rank_fusion([response.matches for response in responses], k=rrf_k)
+
+        return [(hit_to_chunk(doc.id, doc.to_dict()), score) for doc, score in fused[:top_k]]
+ 
+        
+
+    async def search_chunks_vector(self, index_name: str, namespace: str, query: Sequence[float],
                             top_k: int = 10, filter: Optional[Mapping[str, Any]] = None,
                             rerank_model: Optional[str] = None,
                             rank_field: Union[str, List[str], None] = None,

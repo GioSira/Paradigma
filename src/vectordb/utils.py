@@ -1,5 +1,6 @@
 from typing import Sequence, Dict, Any, Iterator, Optional, List, Mapping, Union
 from src.chunks.document_chunk import DocumentChunk
+from src.chunks.legal_chunk import LegalChunk
 
 from uuid import UUID
 from datetime import datetime

@@ -2,7 +2,9 @@ from datetime import datetime
 from uuid import UUID
 from typing import List, Optional
 
-from sqlalchemy import CheckConstraint, DateTime, Index, Text, Uuid, func, ForeignKey, Integer, Table, Column
+from sqlalchemy import (CheckConstraint, DateTime, Index, Text, Uuid,
+                         func, ForeignKey, Integer, Table, Column,
+                         DDL, event)
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
  
@@ -116,7 +118,6 @@ CORSO_DOCENTE = Table(
     "corso_docente", Base.metadata, 
     Column("corso_id", Uuid, ForeignKey("corso.id", ondelete="CASCADE"), primary_key=True),
     Column("tutor_id", Uuid, ForeignKey("tutor.user_id", ondelete="CASCADE"), primary_key=True)
-    
 )
 
 ISCRIZIONE = Table(
@@ -137,3 +138,39 @@ Index("ix_abbonamento_student", AbbonamentoRow.student_id)
 Index("ix_corso_docente", CORSO_DOCENTE.c.tutor_id)
 
 Index("ix_iscrizione_corso", ISCRIZIONE.c.corso_id)
+
+
+# ============================================== TRIGGER =============================================
+
+CORSO_ULTIMO_DOCENTE = "corso_ultimo_docente"
+
+_CORSO_ULTIMO_DOCENTE_FUNCTION = DDL("""
+CREATE OR REPLACE FUNCTION corso_conserva_un_docente() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    PERFORM 1 FROM corso WHERE id = OLD.corso_id FOR UPDATE;
+    IF NOT FOUND THEN
+        RETURN NULL;
+    END IF;
+ 
+    IF NOT EXISTS (SELECT 1 FROM corso_docente WHERE corso_id = OLD.corso_id) THEN
+        RAISE EXCEPTION USING
+            MESSAGE    = 'un corso deve avere almeno un docente',
+            DETAIL     = OLD.corso_id::text,
+            ERRCODE    = 'restrict_violation',
+            CONSTRAINT = 'corso_ultimo_docente';
+    END IF;
+ 
+    RETURN NULL;
+END
+$$
+""")
+ 
+_CORSO_ULTIMO_DOCENTE_TRIGGER = DDL("""
+CREATE TRIGGER corso_ultimo_docente
+AFTER DELETE ON corso_docente
+FOR EACH ROW EXECUTE FUNCTION corso_conserva_un_docente()
+""")
+
+event.listen(CORSO_DOCENTE, "after_create", _CORSO_ULTIMO_DOCENTE_FUNCTION.execute_if(dialect="postgresql"))
+event.listen(CORSO_DOCENTE, "after_create", _CORSO_ULTIMO_DOCENTE_TRIGGER.execute_if(dialect="postgresql"))

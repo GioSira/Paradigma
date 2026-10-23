@@ -32,10 +32,9 @@ from sqlalchemy import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import src.roles.user as user_module
 from src.roles.tutor import Tutor
 from src.roles.user import User
-from src.sqldb.base import Base, make_engine
+from src.sqldb.base import make_engine
 from src.sqldb.errors import EmailAlreadyRegistered, UserAlreadyExists, UserNotFound
 from src.sqldb.tables import TutorRow, UserRow
 from src.sqldb.repository.tutor_repository import TutorRepository
@@ -50,7 +49,7 @@ pytestmark = [
     pytest.mark.usefixtures("database"),     # conftest.py: lock + tabelle ricreate una volta
 ]
 
-# argon2 veloce, come in test_user_repository.py.
+# Solo per scrivere un hash valido a mano nei test sui vincoli.
 FAST_HASHER = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1)
 # Ogni esempio apre una connessione al database: niente shrinking.
 DB = settings(max_examples=10, deadline=None,
@@ -107,25 +106,7 @@ dates = st.datetimes(min_value=datetime(1970, 1, 1), max_value=datetime(2100, 1,
 
 
 # ============================================================ fixture
-
-@pytest.fixture(scope="session", autouse=True)
-def fast_password_hashing():
-    with pytest.MonkeyPatch.context() as patch:
-        patch.setattr(user_module, "PH", FAST_HASHER)
-        yield
-
-
-@pytest.fixture(scope="session", autouse=True)
-def schema():
-    async def recreate():
-        engine = make_engine(DATABASE_URL)
-        async with engine.begin() as connection:
-            await connection.run_sync(Base.metadata.drop_all)
-            await connection.run_sync(Base.metadata.create_all)
-        await engine.dispose()
-
-    asyncio.run(recreate())
-
+# Tabelle, lock e argon2 veloce: fixture "database" in conftest.py.
 
 def in_transaction(test):
     """Esegue test(tutors, users, session) in una transazione annullata alla fine."""
@@ -657,8 +638,11 @@ class TutorRepositoryMachine(RuleBasedStateMachine):
         self.tutors_model = {}      # user_id -> Tutor atteso
         self.created_at = {}        # user_id -> created_at dell'add (update non lo cambia)
         self.students = {}          # user_id -> User
-        self.loop = asyncio.Runner()
-        self.loop.run(self._open())
+        # Un event loop dedicato a tutta la sequenza: le connessioni asyncpg
+        # appartengono al loop che le ha create. (asyncio.Runner farebbe lo
+        # stesso, ma esiste solo da Python 3.11.)
+        self.loop = asyncio.new_event_loop()
+        self.loop.run_until_complete(self._open())
 
     async def _open(self):
         self.engine = make_engine(DATABASE_URL)
@@ -676,12 +660,12 @@ class TutorRepositoryMachine(RuleBasedStateMachine):
             await self.engine.dispose()
 
         try:
-            self.loop.run(close())
+            self.loop.run_until_complete(close())
         finally:
             self.loop.close()
 
     def run(self, coroutine):
-        return self.loop.run(coroutine)
+        return self.loop.run_until_complete(coroutine)
 
     def email_owner(self, email):
         everyone = {**self.tutors_model, **self.students}
