@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, AsyncExitStack
 from typing import AsyncContextManager, AsyncGenerator, Callable, Optional
  
 import httpx
@@ -9,7 +9,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from openrouter.errors import OpenRouterError
 from pinecone.errors import PineconeError
  
-from src.api.routes import router
+from src.api.llm_routes import router as llm_router
+from src.api.chunk_routes import router as chunk_router
 from src.api.settings import Settings
 
 from src.llm.model_loader import ModelLoader
@@ -17,6 +18,7 @@ from src.llm.errors import GenerationError
 from src.llm.jev_loader import JevLoader
 
 from src.orchestrator.llm_orchestrator import IndexingError, RagService
+from src.orchestrator.chunker_orchestrator import ChunkerService
 from src.vectordb.pinecone_db import PineconeDB
 
 
@@ -24,67 +26,72 @@ from src.vectordb.pinecone_db import PineconeDB
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 
 RagFactory = Callable[[Settings], AsyncContextManager[RagService]]
+ChunkFactory = Callable[[Settings], AsyncContextManager[ChunkerService]]
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def build_rag(settings: Settings) -> AsyncGenerator[RagService, None]:
-    """
-    Crea i servizi. Se setup() fallisce (chiave sbagliata, indice con
-    un'altra dimensione...) il server non parte
-    """
+async def build_chunk(settings: Settings) -> AsyncGenerator[ChunkerService, None]:
 
+    chunk = ChunkerService()
+
+    yield chunk
+
+
+@asynccontextmanager
+async def build_rag(settings: Settings) -> AsyncGenerator[RagService, None]:
     logger.info("Starting up system...")
 
-    llm_model = ModelLoader()
-    vectordb = PineconeDB()
-    jev_model = JevLoader()
+    async with AsyncExitStack() as stack:
+        llm_model = ModelLoader()
+        stack.push_async_callback(llm_model.aclose)
 
-    logger.info("LLM and DB online, starting pipeline...")
+        vectordb = PineconeDB()
+        stack.push_async_callback(vectordb.aclose)
 
-    try:
+        jev_model = JevLoader()
+        stack.push_async_callback(jev_model.aclose)
 
-        # Per nome: il quinto parametro di RagService e' chunker, non top_k.
+        logger.info("LLM and DB online, starting pipeline...")
+
         rag = RagService(
             vectordb=vectordb,
             llm_model=llm_model,
             jev_model=jev_model,
-            index_name=settings.index_name,                         
+            index_name=settings.index_name,
             top_k=settings.top_k,
             max_tokens=settings.max_tokens,
-            top_n=settings.top_n
+            top_n=settings.top_n,
         )
 
         dimension = await rag.setup()
-
         logger.info("indice %r pronto, dimensione %d", settings.index_name, dimension)
         logger.info("Pipeline online")
 
         yield rag
 
-    finally:
-
-        logger.info("Closing DB and LLM connection...")
-        await vectordb.aclose()
-        await llm_model.aclose()
-        await jev_model.aclose()
-        logger.info("Connection closed")
+    logger.info("Connection closed")
 
 
-def create_app(settings: Optional[Settings] = None, rag_factory: RagFactory = build_rag) -> FastAPI:
+def create_app(settings: Optional[Settings] = None, 
+               rag_factory: RagFactory = build_rag,
+               chunk_factory: ChunkFactory = build_chunk) -> FastAPI:
 
     settings = settings or Settings()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-        async with rag_factory(settings) as rag:
+        async with rag_factory(settings) as rag,\
+              chunk_factory(settings) as chunk:
             app.state.rag = rag
+            app.state.chunk = chunk
             app.state.settings = settings
             yield
 
     app = FastAPI(title="Paradigma RAG", version="1.0", lifespan=lifespan)
-    app.include_router(router)
+    app.include_router(llm_router)
+    app.include_router(chunk_router)
 
 
     @app.get("/", include_in_schema=False)

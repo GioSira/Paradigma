@@ -17,6 +17,7 @@ dependencies = [
     "pydantic-settings>=2.15.0",
     "pydantic[email]>=2.13.5",
     "pytest>=9.1.1",
+    "python-multipart>=0.0.32",
     "requests>=2.34.2",
     "sqlalchemy[asyncio]>=2.0.54",
     "typesafe-sdk>=0.7.5",

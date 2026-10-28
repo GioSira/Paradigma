@@ -2,187 +2,175 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f3f5f7">
 <title>Paradigma</title>
 <style>
+
+  /* Paradigma: bianco spento, vetro trasparente, azioni in tinta blu fumo.
+     Le superfici sono vetro (sfocano quello che hanno dietro); dietro c'e' una luce
+     viola che si muove piano e, in basso, un orizzonte a griglia in stile anni '80.
+     Il ciano segna le azioni; il magenta compare solo come bagliore. Il rosso resta agli errori. */
   :root {
-    --bg: #f5f5f7;
-    --surface: #ffffff;
-    --fill: #f2f2f4;           /* sfondo dei campi */
-    --fill-hover: #e8e8ed;
-    --text: #1d1d1f;
-    --secondary: #6e6e73;
-    --tertiary: #86868b;
-    --separator: rgba(0, 0, 0, .08);
-    --accent: #0071e3;
-    --accent-hover: #0077ed;
-    --accent-soft: rgba(0, 113, 227, .1);
-    --green: #28a745;
-    --red: #e30000;
-    --bar: rgba(251, 251, 253, .78);
-    --shadow: 0 2px 6px rgba(0, 0, 0, .04), 0 12px 32px rgba(0, 0, 0, .06);
-    --shadow-strong: 0 4px 12px rgba(0, 0, 0, .06), 0 24px 56px rgba(0, 0, 0, .1);
-    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif;
-    --radius-l: 24px;
-    --radius-m: 14px;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #000000;
-      --surface: #1c1c1e;
-      --fill: #2c2c2e;
-      --fill-hover: #3a3a3c;
-      --text: #f5f5f7;
-      --secondary: #a1a1a6;
-      --tertiary: #8e8e93;
-      --separator: rgba(255, 255, 255, .1);
-      --accent: #2997ff;
-      --accent-hover: #47a6ff;
-      --accent-soft: rgba(41, 151, 255, .16);
-      --green: #30d158;
-      --red: #ff453a;
-      --bar: rgba(22, 22, 23, .72);
-      --shadow: 0 0 0 1px rgba(255, 255, 255, .06);
-      --shadow-strong: 0 0 0 1px rgba(255, 255, 255, .08), 0 24px 56px rgba(0, 0, 0, .6);
-    }
+    color-scheme: light;
+    --sheen: linear-gradient(155deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 42%);   /* riflesso del vetro */
+    --bg: #f3f5f7;                          /* panna */
+    --glass: rgba(212, 233, 248, .34);
+    --glass-strong: rgba(220, 238, 251, .52);
+    --glass-line: rgba(70, 130, 180, .18);
+    --fill: rgba(255, 255, 255, .55);
+    --fill-hover: rgba(255, 255, 255, .8);
+    --text: #1f2d3a;                        /* bruno caldo, morbido */
+    --secondary: #4d5f70;
+    --tertiary: #667889;
+    --accent: #2a6b9c;                      /* rosso-arancio, solo per le azioni */
+    --accent-hover: #1f5580;
+    --accent-2: #7fb2d6;                    /* ambra, usata una volta sola */
+    --accent-soft: rgba(42, 107, 156, .08);
+    --accent-glow: rgba(42, 107, 156, .16);
+    --grad: linear-gradient(180deg, rgba(255, 255, 255, .95), rgba(226, 239, 249, .85));              /* azioni principali: tinta leggera, non piene */
+    --on-accent: #26435a;
+    --green: #4f7a3a;
+    --red: #b42318;
+    --blur: saturate(170%) blur(24px);
+    --shadow: 0 1px 2px rgba(40, 60, 90, .06), 0 10px 28px -16px rgba(40, 60, 90, .24);
+    --shadow-strong: 0 1px 3px rgba(40, 60, 90, .08), 0 18px 44px -22px rgba(40, 60, 90, .3);
+    --highlight: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 0 0 1px rgba(80, 140, 190, .24);
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif;
+    --radius-l: 28px;
+    --radius-m: 16px;
   }
 
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font: 17px/1.47 var(--font);
-    letter-spacing: -0.022em;
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 var(--font); letter-spacing: -0.011em;
     -webkit-font-smoothing: antialiased;
-    min-height: 100vh;
+    min-height: 100vh; overflow-x: hidden;
   }
+  ::selection { background: rgba(42, 107, 156, .18); }
   button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
-  :focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; box-shadow: 0 0 0 1px var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-  /* ------------------------------ barra in alto ------------------------------ */
-  .bar {
-    position: sticky; top: 0; z-index: 10;
-    background: var(--bar);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    backdrop-filter: saturate(180%) blur(20px);
-    border-bottom: 1px solid var(--separator);
+  /* ------------------------------ sfondo: luce viola + orizzonte a griglia ------------------------------ */
+  .liquid { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .liquid span { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .5; }
+  .liquid span:nth-child(1) { width: 50vw; height: 50vw; left: -14vw; top: -22vw; background: #cfe3f4; }
+  .liquid span:nth-child(2) { width: 38vw; height: 38vw; right: -12vw; top: 16vh; background: #dbe3f4; opacity: .45; }
+  .liquid span:nth-child(3) { width: 40vw; height: 40vw; left: 26vw; bottom: -24vw; background: #c9e6ee; opacity: .5; }
+  /* superficie di vetro: la ricetta comune */
+  .bar-inner, .card, .ask-box, .step, .source-panel {
+    background: var(--sheen), var(--glass);
+    -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+    box-shadow: var(--highlight), var(--shadow);
   }
-  .bar-inner {
-    max-width: 1080px; margin: 0 auto; height: 56px; padding: 0 22px;
-    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
-  }
-  .brand { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; display: flex; align-items: center; gap: 9px; }
-  .brand svg { width: 22px; height: 22px; color: var(--accent); }
 
-  .segmented {
-    display: inline-flex; padding: 3px; gap: 2px;
-    background: var(--fill); border-radius: 10px;
+  /* ------------------------------ barra: una capsula di vetro che galleggia ------------------------------ */
+  .bar { position: sticky; top: 0; z-index: 10; padding: max(14px, env(safe-area-inset-top)) 20px 10px;
+         background: linear-gradient(to bottom, var(--bg) 50%, rgba(243, 245, 247, 0)); }
+  .bar-inner {
+    max-width: 1040px; margin: 0 auto; height: 58px; padding: 0 10px 0 22px;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+    border-radius: 999px; background: var(--sheen), var(--glass-strong);
   }
+  .brand { font-size: 17px; font-weight: 600; letter-spacing: -0.03em; display: flex; align-items: center; gap: 9px; }
+  .brand svg { width: 21px; height: 21px; color: var(--accent); }
+
+  .segmented { display: inline-flex; padding: 4px; gap: 2px; background: var(--fill); border-radius: 999px; }
   .segmented button {
     border: 0; background: transparent; cursor: pointer;
-    padding: 5px 16px; border-radius: 8px;
+    padding: 7px 17px; border-radius: 999px;
     font-size: 14px; font-weight: 500; color: var(--secondary);
-    transition: background .2s, color .2s, box-shadow .2s;
+    transition: background .25s, color .25s, box-shadow .25s;
   }
-  .segmented button[aria-selected=true] {
-    background: var(--surface); color: var(--text);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04);
-  }
+  .segmented button:hover { color: var(--text); }
+  .segmented button[aria-selected=true] { background: #ffffff; color: var(--text); box-shadow: 0 1px 2px rgba(40, 60, 90, .1); }
 
-  .bar-right { display: flex; justify-content: flex-end; align-items: center; gap: 14px; }
+  .bar-right { display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
   .course {
     display: flex; align-items: center; gap: 6px;
-    background: var(--fill); border-radius: 999px; padding: 0 4px 0 12px; height: 32px;
+    background: var(--fill); border-radius: 999px; padding: 0 4px 0 14px; height: 38px;
+    transition: box-shadow .2s;
   }
-  .course label { font-size: 13px; color: var(--tertiary); }
+  .course label { font-size: 12.5px; color: var(--tertiary); }
   .course input {
-    width: 120px; border: 0; background: transparent; outline: none;
-    font-size: 14px; font-weight: 500; padding: 4px 8px 4px 0;
+    width: 110px; border: 0; background: transparent; outline: none;
+    font-size: 14px; font-weight: 600; padding: 4px 8px 4px 0;
   }
-  .course:focus-within { box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--accent); }
+  .course:focus-within { box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); }
   .course.invalid { box-shadow: 0 0 0 1px var(--red); }
 
-  .status { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--secondary); white-space: nowrap; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tertiary); }
+  .status { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--secondary); white-space: nowrap; padding-right: 10px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tertiary); }
   .status.up .dot { background: var(--green); }
   .status.down .dot { background: var(--red); }
 
   /* ------------------------------ contenuto ------------------------------ */
-  main { max-width: 1080px; margin: 0 auto; padding: 0 22px 120px; }
+  main { max-width: 1040px; margin: 0 auto; padding: 0 20px 120px; }
   .view[hidden] { display: none; }
 
+  .hero { text-align: center; padding: 96px 0 44px; }
+  .hero h1 { margin: 0; font-size: clamp(32px, 4.8vw, 52px); line-height: 1.1; font-weight: 500; letter-spacing: -0.035em; color: var(--text); }
+  .hero p { margin: 16px auto 0; max-width: 36ch; font-size: 18px; line-height: 1.45; color: var(--secondary); letter-spacing: -0.015em; }
+
   /* ------------------------------ chat ------------------------------ */
-  #view-ask { display: flex; flex-direction: column; min-height: calc(100vh - 57px); }
+  #view-ask { display: flex; flex-direction: column; min-height: calc(100vh - 72px); min-height: calc(100dvh - 72px); }
   #view-ask[hidden] { display: none; }
-  .hero { text-align: center; padding: 88px 0 40px; }
-  .hero h1 {
-    margin: 0; font-size: clamp(40px, 6vw, 64px); line-height: 1.06;
-    font-weight: 700; letter-spacing: -0.035em;
-  }
-  .hero p { margin: 14px auto 0; max-width: 34ch; font-size: 21px; line-height: 1.38; color: var(--secondary); letter-spacing: -0.01em; }
-  #view-ask .hero { margin: auto 0 0; }          /* chat vuota: titolo al centro */
+  #view-ask .hero { margin: auto 0 0; }
   #view-ask.chatting .hero { display: none; }
 
-  .thread { width: 100%; max-width: 760px; margin: 0 auto; padding: 32px 0 12px; display: flex; flex-direction: column; gap: 28px; }
+  .thread { width: 100%; max-width: 740px; margin: 0 auto; padding: 36px 0 12px; display: flex; flex-direction: column; gap: 30px; }
   .thread:empty { display: none; }
 
   .msg-user { align-self: flex-end; max-width: 80%; }
-  .bubble {
-    background: var(--accent); color: #fff; border-radius: 22px 22px 6px 22px;
-    padding: 11px 17px; font-size: 17px; line-height: 1.42; white-space: pre-wrap; overflow-wrap: anywhere;
-  }
+  .bubble { background: rgba(42, 107, 156, .08); box-shadow: inset 0 0 0 1px rgba(42, 107, 156, .22); color: var(--text); border-radius: 22px 22px 6px 22px; padding: 11px 17px; font-size: 16px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 
   .msg-bot { align-self: stretch; display: flex; gap: 14px; }
-  .avatar {
-    flex: none; width: 30px; height: 30px; border-radius: 50%; margin-top: 2px;
-    background: var(--surface); box-shadow: var(--shadow); display: grid; place-items: center; color: var(--accent);
-  }
-  .avatar svg { width: 16px; height: 16px; }
+  .avatar { flex: none; width: 32px; height: 32px; border-radius: 50%; margin-top: 1px; background: var(--glass-strong); box-shadow: var(--highlight), var(--shadow); display: grid; place-items: center; color: var(--accent); }
+  .avatar svg { width: 15px; height: 15px; }
   .bot-body { flex: 1; min-width: 0; }
-  .answer { font-size: 17px; line-height: 1.6; letter-spacing: -0.012em; overflow-wrap: anywhere; }
+  .answer { font-size: 16.5px; line-height: 1.7; letter-spacing: -0.012em; overflow-wrap: anywhere; }
   .answer p { margin: 0 0 .8em; }
   .answer p:last-child { margin-bottom: 0; }
+  .answer strong { font-weight: 600; color: var(--text); }
   .answer.muted { color: var(--secondary); }
 
   .cite {
     display: inline-grid; place-items: center;
     min-width: 20px; height: 20px; padding: 0 6px; margin: 0 1px;
-    border-radius: 999px; background: var(--accent-soft); color: var(--accent);
-    font-size: 12px; font-weight: 600; letter-spacing: 0; text-decoration: none;
-    vertical-align: 2px; transition: background .15s, color .15s; cursor: pointer; border: 0;
+    border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 0;
+    font-size: 11.5px; font-weight: 650; letter-spacing: 0;
+    vertical-align: 2px; transition: background .15s, color .15s, box-shadow .15s; cursor: pointer;
   }
-  .cite:hover, .cite.on { background: var(--accent); color: #fff; }
+  .cite:hover, .cite.on { background: rgba(255, 255, 255, .95); color: var(--accent-hover); }
 
-  /* fonti sotto ogni risposta: piccole pillole, il testo si apre al clic */
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
   .chip {
-    display: inline-flex; align-items: center; gap: 7px; max-width: 100%;
-    border: 0; cursor: pointer; border-radius: 999px; padding: 5px 12px 5px 5px;
-    background: var(--fill); color: var(--secondary); font-size: 13px; font-weight: 500;
-    transition: background .15s, color .15s;
+    display: inline-flex; align-items: center; gap: 8px; max-width: 100%;
+    border: 0; cursor: pointer; border-radius: 999px; padding: 5px 13px 5px 5px;
+    background: var(--glass); box-shadow: var(--highlight), 0 1px 2px rgba(60, 40, 140, .12);
+    -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+    color: var(--secondary); font-size: 13px; font-weight: 500;
+    transition: color .15s, box-shadow .15s;
   }
-  .chip:hover { background: var(--fill-hover); color: var(--text); }
-  .chip[aria-expanded=true], .chip.on { background: var(--accent-soft); color: var(--accent); }
+  .chip:hover { color: var(--text); }
+  .chip[aria-expanded=true], .chip.on { color: var(--accent); box-shadow: var(--highlight), 0 0 0 1px rgba(42, 107, 156, .4); }
   .chip .num {
-    flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff;
-    display: grid; place-items: center; font-size: 11px; font-weight: 600; letter-spacing: 0;
+    flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-size: 11px; font-weight: 700; letter-spacing: 0;
   }
   .chip span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .source-panel {
-    margin-top: 10px; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow);
-    padding: 16px 18px; font-size: 14px; line-height: 1.55;
-  }
+  .source-panel { margin-top: 12px; border-radius: 20px; padding: 16px 20px; font-size: 14.5px; line-height: 1.6; }
   .source-panel[hidden] { display: none; }
-  .source-panel header { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 13px; color: var(--secondary); }
-  .source-panel header strong { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .source-panel header { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 12.5px; color: var(--tertiary); }
+  .source-panel header strong { color: var(--accent); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .source-panel p { margin: 0; white-space: pre-wrap; }
 
   .typing { display: inline-flex; gap: 5px; padding: 10px 0; }
-  .typing i { width: 8px; height: 8px; border-radius: 50%; background: var(--tertiary); animation: blink 1.2s infinite ease-in-out; }
+  .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: blink 1.2s infinite ease-in-out; }
   .typing i:nth-child(2) { animation-delay: .15s; }
   .typing i:nth-child(3) { animation-delay: .3s; }
   @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
@@ -190,106 +178,114 @@
   .failed { color: var(--red); font-size: 15px; }
   .retry { margin-left: 10px; }
 
-  /* barra di scrittura: resta in basso mentre la conversazione scorre */
-  .composer-wrap {
-    position: sticky; bottom: 0; margin-top: auto; padding: 14px 0 22px;
-    background: linear-gradient(to bottom, transparent, var(--bg) 28%);
-  }
+  .composer-wrap { position: sticky; bottom: 0; margin-top: auto; padding: 22px 0 max(24px, env(safe-area-inset-bottom));
+                   background: linear-gradient(to bottom, rgba(243, 245, 247, 0), rgba(243, 245, 247, .85) 55%); }
   #view-ask:not(.chatting) .composer-wrap { position: static; margin-top: 0; margin-bottom: auto; background: none; }
   .ask-box {
-    max-width: 760px; margin: 0 auto;
-    background: var(--surface); border-radius: var(--radius-l);
-    box-shadow: var(--shadow-strong);
+    position: relative; max-width: 740px; margin: 0 auto;
+    border-radius: var(--radius-l); background: var(--sheen), var(--glass-strong);
+    box-shadow: var(--highlight), var(--shadow-strong);
     padding: 8px 8px 8px 22px;
     display: flex; align-items: flex-end; gap: 12px;
     transition: box-shadow .25s;
   }
-  .ask-box:focus-within { box-shadow: var(--shadow-strong), 0 0 0 4px var(--accent-soft); }
+  /* bordo neon: ciano a sinistra, magenta a destra, piu' acceso quando si scrive */
+  .ask-box::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none; background: linear-gradient(120deg, rgba(42, 107, 156, .7), rgba(130, 190, 220, .8)); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; transition: opacity .25s; }
+  .ask-box:focus-within { box-shadow: var(--highlight), var(--shadow-strong); }
+  .ask-box:focus-within::before { opacity: 1; }
   .ask-box textarea {
     flex: 1; border: 0; outline: none; background: transparent; resize: none;
-    font-size: 18px; line-height: 1.4; padding: 10px 0; min-height: 46px; max-height: 200px;
-    letter-spacing: -0.015em;
+    font-size: 17.5px; line-height: 1.4; padding: 11px 0; min-height: 48px; max-height: 200px;
   }
   .ask-box textarea::placeholder { color: var(--tertiary); }
-  .ask-box textarea:focus-visible { outline: none; box-shadow: none; }
+  .ask-box textarea:focus-visible { outline: none; }
 
-  .round {
-    flex: none; width: 42px; height: 42px; border-radius: 50%; border: 0; cursor: pointer;
-    background: var(--accent); color: #fff; display: grid; place-items: center;
-    transition: background .2s, transform .15s, opacity .2s;
-  }
-  .round:hover { background: var(--accent-hover); }
+  /* invio: l'unico pulsante pieno nella chat, perche' e' l'azione della pagina */
+  .round { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 0; cursor: pointer; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(70, 120, 165, .26), 0 4px 12px -6px rgba(40, 60, 90, .25); transition: transform .15s, opacity .2s, background .2s; }
+  .round:hover:not(:disabled) { background: #fff; }
   .round:active { transform: scale(.94); }
-  .round:disabled { opacity: .35; cursor: default; }
-  .round svg { width: 20px; height: 20px; }
+  .round:disabled { opacity: 1; cursor: default; background: var(--fill); color: var(--tertiary); box-shadow: inset 0 0 0 1px rgba(60, 90, 120, .12); }
+  .round svg { width: 19px; height: 19px; }
 
-  .tools { max-width: 760px; margin: 12px auto 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .tools { max-width: 740px; margin: 12px auto 0; padding: 0 6px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   .select {
     appearance: none; -webkit-appearance: none; cursor: pointer;
-    border: 0; border-radius: 999px; background: var(--fill);
-    padding: 6px 32px 6px 14px; font-size: 13px; font-weight: 500; color: var(--secondary);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%2386868b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+    border: 0; border-radius: 999px; background-color: var(--fill);
+    padding: 7px 32px 7px 14px; font-size: 13px; font-weight: 500; color: var(--secondary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%234a6680' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 13px center;
     max-width: 60%; text-overflow: ellipsis;
   }
   .select:hover { background-color: var(--fill-hover); }
+  .select option { background: #ffffff; color: var(--text); }
   .ghost {
-    border: 0; background: none; cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 500;
+    border: 0; background: none; cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600;
     display: inline-flex; align-items: center; gap: 6px; padding: 6px 4px;
   }
-  .ghost:hover { text-decoration: underline; }
-  .ghost:disabled { color: var(--tertiary); cursor: default; text-decoration: none; }
+  .ghost:hover { color: var(--accent-hover); }
+  .ghost:disabled { color: var(--tertiary); cursor: default; }
   .ghost svg { width: 15px; height: 15px; }
   .hint { font-size: 12px; color: var(--tertiary); }
 
   .error {
-    max-width: 760px; margin: 22px auto 0; padding: 14px 18px;
-    border-radius: var(--radius-m); background: rgba(227, 0, 0, .07); color: var(--red);
-    font-size: 15px;
+    max-width: 740px; margin: 22px auto 0; padding: 13px 18px;
+    border-radius: var(--radius-m); background: rgba(214, 38, 74, .07);
+    box-shadow: inset 0 0 0 1px rgba(214, 38, 74, .25);
+    color: var(--red); font-size: 14.5px;
   }
   .error[hidden] { display: none; }
 
   /* ------------------------------ caricamento ------------------------------ */
   .upload { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-  .card { background: var(--surface); border-radius: var(--radius-l); box-shadow: var(--shadow); padding: 30px; }
-  .card h2 { margin: 0 0 4px; font-size: 21px; font-weight: 600; letter-spacing: -0.02em; }
+  .upload[hidden] { display: none; }       /* display:grid altrimenti vince su hidden */
+  .card { border-radius: var(--radius-l); padding: 30px; }
+  .card h2 { margin: 0 0 4px; font-size: 20px; font-weight: 600; letter-spacing: -0.03em; }
   .card .sub { margin: 0 0 22px; font-size: 14px; color: var(--secondary); }
 
   .field { margin-bottom: 18px; }
-  .field label { display: block; font-size: 13px; font-weight: 500; color: var(--secondary); margin: 0 0 7px 2px; }
+  .field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--secondary); margin: 0 0 7px 4px; }
   .input, .area {
-    width: 100%; border: 0; border-radius: 12px; background: var(--fill);
-    padding: 12px 14px; font-size: 16px; outline: none; transition: background .2s, box-shadow .2s;
+    width: 100%; border: 0; border-radius: 14px; background: var(--fill); box-shadow: inset 0 0 0 1px rgba(60, 90, 120, .08);
+    padding: 12px 15px; font-size: 16px; outline: none; transition: background .2s, box-shadow .2s;
   }
-  .input:focus, .area:focus { background: var(--surface); box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); }
+  .input::placeholder, .area::placeholder { color: var(--tertiary); }
+  .input:focus, .area:focus { background: rgba(255, 255, 255, .95); box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); }
   .area { min-height: 240px; resize: vertical; line-height: 1.55; font-size: 15px; }
 
   .drop {
     display: flex; align-items: center; gap: 14px; cursor: pointer;
-    border: 1.5px dashed var(--separator); border-radius: 16px; padding: 18px;
-    transition: border-color .2s, background .2s;
+    border: 1.5px dashed rgba(42, 107, 156, .5); border-radius: 20px; padding: 18px;
+    background: rgba(255, 255, 255, .5);
+    transition: border-color .2s, background .2s, box-shadow .2s;
   }
   .drop:hover, .drop.over, .drop:focus-within { border-color: var(--accent); background: var(--accent-soft); }
   .drop svg { flex: none; width: 34px; height: 34px; color: var(--accent); }
   .drop strong { display: block; font-size: 15px; font-weight: 600; }
   .drop span { font-size: 13px; color: var(--secondary); }
-  .or { text-align: center; font-size: 13px; color: var(--tertiary); margin: 14px 0; }
+  .or { display: flex; align-items: center; gap: 12px; font-size: 12.5px; color: var(--tertiary); margin: 16px 0; }
+  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--glass-line); }
 
-  .actions { display: flex; align-items: center; gap: 16px; margin-top: 6px; flex-wrap: wrap; }
-  .pill {
-    border: 0; cursor: pointer; border-radius: 999px; padding: 12px 24px;
-    background: var(--accent); color: #fff; font-size: 16px; font-weight: 500;
-    transition: background .2s, transform .15s;
-  }
-  .pill:hover { background: var(--accent-hover); }
+  .actions { display: flex; align-items: center; gap: 12px; margin-top: 6px; flex-wrap: wrap; }
+  /* pulsante principale: pieno, sfumato ciano-viola; il secondario e' solo un contorno */
+  .pill { border: 0; cursor: pointer; border-radius: 999px; padding: 12px 24px; background: var(--accent); color: var(--on-accent); font-size: 15px; font-weight: 550; box-shadow: inset 0 0 0 1px rgba(70, 120, 165, .26), 0 4px 12px -6px rgba(40, 60, 90, .25); transition: background .2s, transform .15s, opacity .2s; }
+  .pill:hover:not(:disabled) { background: #fff; }
   .pill:active { transform: scale(.97); }
-  .pill:disabled { opacity: .5; cursor: default; }
-  .ok { font-size: 15px; font-weight: 500; color: var(--green); display: flex; align-items: center; gap: 6px; }
+  .pill:disabled { opacity: 1; cursor: default; background: var(--fill); color: var(--tertiary); box-shadow: inset 0 0 0 1px rgba(60, 90, 120, .12); }
+  .pill.secondary { background: transparent; color: var(--secondary); box-shadow: inset 0 0 0 1px rgba(60, 90, 120, .24); }
+  .pill.secondary:hover:not(:disabled) { color: var(--text); background: var(--fill); }
+  .ok { font-size: 14.5px; font-weight: 600; color: var(--green); display: flex; align-items: center; gap: 6px; }
+
+  .preview-count { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--secondary); }
+  .preview-count input {
+    width: 64px; border: 0; border-radius: 12px; background: var(--fill); padding: 9px 10px;
+    font-size: 15px; text-align: center; font-variant-numeric: tabular-nums;
+  }
+  .preview-count input:focus { outline: none; box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); }
 
   .side { display: flex; flex-direction: column; gap: 20px; }
-  .big { font-size: 56px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
-  .big small { font-size: 21px; font-weight: 600; letter-spacing: -0.02em; margin-left: 6px; }
-  .side .sub { margin-top: 6px; }
+  .big { font-size: 48px; font-weight: 500; letter-spacing: -0.045em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text); }
+  .big small { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; margin-left: 6px; color: var(--secondary); -webkit-text-fill-color: var(--secondary); }
+  .side .sub { margin-top: 8px; }
 
   .slider { margin-top: 20px; }
   .slider .top { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
@@ -297,37 +293,125 @@
   .slider output { font-weight: 600; font-variant-numeric: tabular-nums; }
   input[type=range] { width: 100%; accent-color: var(--accent); }
 
-  .list { list-style: none; margin: 18px 0 0; padding: 0; max-height: 220px; overflow: auto; }
-  .list li { font-size: 13px; color: var(--secondary); padding: 9px 0; border-top: 1px solid var(--separator); line-height: 1.4; }
+  .list { list-style: none; margin: 18px 0 0; padding: 0; max-height: 240px; overflow: auto; }
+  .list li { font-size: 13px; color: var(--secondary); padding: 10px 0; border-top: 1px solid var(--glass-line); line-height: 1.45; }
   .docs { list-style: none; margin: 0; padding: 0; }
-  .docs li { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 1px solid var(--separator); font-size: 15px; }
+  .docs li { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 1px solid var(--glass-line); font-size: 15px; }
   .docs li:first-child { border-top: 0; }
-  .docs li span:last-child { color: var(--tertiary); white-space: nowrap; font-size: 14px; }
+  .docs li span:last-child { color: var(--tertiary); white-space: nowrap; font-size: 13.5px; }
   .docs .empty { color: var(--tertiary); font-size: 14px; }
 
+  /* ------------------------------ scelte a due opzioni ------------------------------ */
+  .switch { display: inline-flex; padding: 4px; gap: 2px; background: var(--fill); border-radius: 999px; }
+  .switch button {
+    border: 0; background: transparent; cursor: pointer; padding: 7px 15px; border-radius: 999px;
+    font-size: 13px; font-weight: 500; color: var(--secondary); transition: background .2s, color .2s, box-shadow .2s;
+  }
+  .switch button:hover { color: var(--text); }
+  .switch button[aria-pressed=true] { background: #ffffff; color: var(--text); box-shadow: 0 1px 2px rgba(40, 60, 90, .1); }
+  .upload-mode { display: flex; justify-content: center; margin: -14px 0 30px; }
+
+  /* ------------------------------ file di chunk ------------------------------ */
+  .file-picked { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-top: 14px; font-size: 14px; }
+  .file-picked strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-picked span { color: var(--tertiary); white-space: nowrap; }
+  .note { font-size: 13px; color: var(--secondary); margin: 16px 0 0; line-height: 1.5; }
+  .note code, .card code { font-size: 12px; background: var(--fill); padding: 1px 6px; border-radius: 6px; }
+
+  /* ------------------------------ passo per passo ------------------------------ */
+  .pipe { max-width: 860px; margin: 0 auto; }
+  .pipe-form .ask-box { max-width: none; }
+  .pipe-controls { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; margin: 14px 6px 0; font-size: 13px; color: var(--secondary); }
+  .pipe-controls label { display: inline-flex; align-items: center; gap: 8px; }
+  .pipe-controls input[type=number] { width: 74px; border: 0; border-radius: 10px; background: var(--fill); padding: 6px 9px; font-size: 13px; }
+  .pipe-controls input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
+  .pipe-run { margin-left: auto; }
+  .pill.small { padding: 9px 18px; font-size: 14px; }
+
+  .steps { list-style: none; margin: 34px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  .step { border-radius: 24px; padding: 18px 22px; }
+  .step-head { display: flex; align-items: center; gap: 14px; }
+  .step-num {
+    flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--fill); box-shadow: inset 0 0 0 1px rgba(60, 90, 120, .1); color: var(--secondary); font-size: 13px; font-weight: 650;
+    transition: background .3s, color .3s, box-shadow .3s;
+  }
+  .step.done .step-num { background: rgba(255, 255, 255, .85); color: var(--on-accent); box-shadow: inset 0 0 0 1px rgba(70, 120, 165, .3); }
+  .step.failed .step-num { background: var(--red); color: #fff; }
+  .step-title { flex: 1; min-width: 0; }
+  .step-title h3 { margin: 0; font-size: 16.5px; font-weight: 600; letter-spacing: -0.025em; }
+  .step-title p { margin: 1px 0 0; font-size: 13px; color: var(--tertiary); }
+  .step-meta { font-size: 12px; color: var(--tertiary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .step-btn {
+    border: 0; cursor: pointer; border-radius: 999px; padding: 7px 15px; font-size: 13px; font-weight: 600;
+    background: var(--accent-soft); color: var(--accent);
+    box-shadow: inset 0 0 0 1px rgba(42, 107, 156, .3);
+    transition: box-shadow .2s, color .2s;
+  }
+  .step-btn:hover:not(:disabled) { background: rgba(42, 107, 156, .16); }
+  .step-btn:disabled { background: var(--fill); color: var(--tertiary); box-shadow: inset 0 0 0 1px rgba(60, 90, 120, .1); cursor: default; }
+  .step-body { margin: 14px 0 0 44px; }
+  .step-body:empty { display: none; }
+  .step-body textarea { min-height: 64px; }
+  .step-error { color: var(--red); font-size: 14px; margin: 0; }
+
+  .cands { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .cand { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 3px 12px; padding: 11px 8px; border-top: 1px solid var(--glass-line); }
+  .cand:first-child { border-top: 0; padding-top: 2px; }
+  .cand-rank { font-size: 13px; font-weight: 650; color: var(--tertiary); font-variant-numeric: tabular-nums; padding-top: 1px; }
+  .cand-doc { font-size: 12.5px; font-weight: 600; color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cand-score { font-size: 12px; color: var(--tertiary); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .cand-score .move { margin-left: 6px; font-weight: 600; }
+  .cand-score .up { color: var(--green); }
+  .cand-score .down { color: var(--red); }
+  .cand-text {
+    grid-column: 2 / 4; margin: 0; font-size: 14px; line-height: 1.55; cursor: pointer;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .cand.open .cand-text { -webkit-line-clamp: unset; white-space: pre-wrap; }
+  .cand.on { background: var(--accent-soft); border-radius: 12px; }
+  .cands-empty { font-size: 14px; color: var(--tertiary); margin: 0; }
+
   @media (max-width: 860px) {
-    .bar-inner { grid-template-columns: 1fr auto; height: auto; padding: 10px 16px; row-gap: 10px; }
+    .bar { padding: max(10px, env(safe-area-inset-top)) 12px 8px; }
+    .bar-inner { grid-template-columns: 1fr auto; height: auto; padding: 10px 8px 8px 18px; row-gap: 10px; border-radius: 26px; }
     .segmented { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; }
-    .segmented button { flex: 1; }
+    .segmented button { flex: 1; padding: 10px 6px; font-size: 13.5px; white-space: nowrap; }
     .status span:last-child { display: none; }
-    .course input { width: 90px; }
+    .course input { width: 84px; font-size: 16px; }
+    .pipe-controls input[type=number], .preview-count input { font-size: 16px; }
     main { padding: 0 16px 80px; }
     .hero { padding: 48px 0 28px; }
-    .hero p { font-size: 18px; }
+    .hero p { font-size: 17px; }
     .ask-box { padding-left: 16px; }
-    .ask-box textarea { font-size: 17px; }
     .msg-user { max-width: 88%; }
     .avatar { display: none; }
     .hint { display: none; }
     .upload { grid-template-columns: 1fr; }
+    .pipe-run { margin-left: 0; }
+    .step { padding: 16px; }
+    .step-head { flex-wrap: wrap; }
+    .step-body { margin-left: 0; }
+    .cand { grid-template-columns: 26px minmax(0, 1fr); }
+    .cand-score { grid-column: 2; text-align: left; }
+    .cand-text { grid-column: 1 / 3; }
     .card { padding: 22px; }
+    .liquid span { filter: blur(70px); }
+    .liquid::before { top: calc(64vh - 70px); }
+    .liquid::after { top: 64vh; background-size: 52px 52px; }
+    @keyframes grid { to { background-position: 0 52px; } }
   }
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: .01ms !important; transition: none !important; }
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
+  }
+  /* senza backdrop-filter il vetro sarebbe troppo trasparente: lo si rende pieno */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root { --glass: rgba(255, 255, 255, .94); --glass-strong: rgba(255, 255, 255, .97); }
   }
 </style>
 </head>
 <body>
+<div class="liquid" aria-hidden="true"><span></span><span></span><span></span></div>
 
 <header class="bar">
   <div class="bar-inner">
@@ -340,6 +424,7 @@
 
     <nav class="segmented" role="tablist" aria-label="Sezioni">
       <button role="tab" id="tab-ask" aria-selected="true" aria-controls="view-ask">Chiedi</button>
+      <button role="tab" id="tab-pipe" aria-selected="false" aria-controls="view-pipe">Passo per passo</button>
       <button role="tab" id="tab-upload" aria-selected="false" aria-controls="view-upload">Carica</button>
     </nav>
 
@@ -388,12 +473,127 @@
     </div>
   </section>
 
+  <!-- ================================ pipeline ================================ -->
+  <section id="view-pipe" class="view" role="tabpanel" aria-labelledby="tab-pipe" hidden>
+    <div class="hero">
+      <h1>Segui la risposta.</h1>
+      <p>Ogni passo della ricerca, uno alla volta, con quello che restituisce.</p>
+    </div>
+
+    <div class="pipe">
+      <form id="pipe-form" class="pipe-form">
+        <div class="ask-box">
+          <label for="pipe-question" class="sr-only">Domanda</label>
+          <textarea id="pipe-question" rows="1" maxlength="2000" placeholder="Che cos'è una chiave esterna?" required></textarea>
+        </div>
+        <div class="pipe-controls">
+          <div class="switch" role="group" aria-label="Tipo di ricerca">
+            <button type="button" id="method-hybrid" aria-pressed="true">Ibrida</button>
+            <button type="button" id="method-vectors" aria-pressed="false">Solo vettori</button>
+          </div>
+          <select id="pipe-doc" class="select" aria-label="Dove cercare">
+            <option value="">In tutti i documenti</option>
+          </select>
+          <label><input type="checkbox" id="pipe-history"> Usa la conversazione della chat</label>
+          <label>Pertinenza minima <input type="number" id="pipe-min-score" min="0" max="1" step="0.05" placeholder="—"></label>
+          <button class="pill small pipe-run" id="pipe-run" type="submit" disabled>Esegui tutti i passi</button>
+        </div>
+      </form>
+
+      <ol class="steps" id="steps">
+        <li class="step" id="step-rewrite">
+          <div class="step-head">
+            <span class="step-num">1</span>
+            <div class="step-title"><h3>Riscrittura</h3><p>La domanda resa autonoma rispetto alla conversazione</p></div>
+            <span class="step-meta"></span>
+            <button type="button" class="step-btn" data-step="rewrite" disabled>Esegui</button>
+          </div>
+          <div class="step-body"></div>
+        </li>
+        <li class="step" id="step-search">
+          <div class="step-head">
+            <span class="step-num">2</span>
+            <div class="step-title"><h3>Ricerca</h3><p id="search-sub">Vettori e parole chiave (BM25), fusi in una classifica</p></div>
+            <span class="step-meta"></span>
+            <button type="button" class="step-btn" data-step="search" disabled>Esegui</button>
+          </div>
+          <div class="step-body"></div>
+        </li>
+        <li class="step" id="step-rerank">
+          <div class="step-head">
+            <span class="step-num">3</span>
+            <div class="step-title"><h3>Rerank</h3><p>I candidati riordinati confrontando davvero domanda e testo</p></div>
+            <span class="step-meta"></span>
+            <button type="button" class="step-btn" data-step="rerank" disabled>Esegui</button>
+          </div>
+          <div class="step-body"></div>
+        </li>
+        <li class="step" id="step-generate">
+          <div class="step-head">
+            <span class="step-num">4</span>
+            <div class="step-title"><h3>Risposta</h3><p>Il modello risponde usando solo i brani rimasti</p></div>
+            <span class="step-meta"></span>
+            <button type="button" class="step-btn" data-step="generate" disabled>Esegui</button>
+          </div>
+          <div class="step-body"></div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
   <!-- ================================ caricamento ================================ -->
   <section id="view-upload" class="view" role="tabpanel" aria-labelledby="tab-upload" hidden>
     <div class="hero">
       <h1>Aggiungi un documento.</h1>
       <p>Il testo viene diviso in brani e indicizzato, pronto per le domande.</p>
     </div>
+
+    <div class="upload-mode">
+      <div class="switch" role="group" aria-label="Cosa caricare">
+        <button type="button" id="mode-text" aria-pressed="true">Testo</button>
+        <button type="button" id="mode-file" aria-pressed="false">File di chunk (JSON)</button>
+      </div>
+    </div>
+
+    <form id="chunkfile-form" class="upload" hidden>
+      <div class="card">
+        <h2>Brani già pronti</h2>
+        <p class="sub">Il server legge i brani dal file JSON, con i documenti a cui appartengono, e li salva per la ricerca.</p>
+
+        <div class="field">
+          <label for="json-title">Nome da mostrare, se il file non ha un titolo</label>
+          <input id="json-title" class="input" type="text" maxlength="300" required placeholder="Codice civile – Libro IV">
+        </div>
+
+        <label class="drop" id="json-drop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M10 13l-2 2 2 2M14 13l2 2-2 2"/></svg>
+          <div>
+            <strong>Scegli un file .json o trascinalo qui</strong>
+            <span>Massimo 10 MB</span>
+          </div>
+          <input id="json-file" class="sr-only" type="file" accept=".json,application/json">
+        </label>
+        <div class="file-picked" id="json-picked" hidden><strong id="json-name"></strong><span id="json-size"></span></div>
+
+        <div class="actions" style="margin-top:22px">
+          <label class="preview-count" for="json-count">Mostra
+            <input id="json-count" type="number" min="1" max="200" value="10" inputmode="numeric">
+            brani</label>
+          <button class="pill secondary" id="json-preview" type="button" disabled>Anteprima</button>
+          <button class="pill" id="json-btn" type="submit" disabled>Indicizza</button>
+          <span id="json-msg" role="status"></span>
+        </div>
+        <div id="json-error" class="error" role="alert" hidden style="margin-left:0"></div>
+      </div>
+
+      <div class="side">
+        <div class="card" aria-live="polite">
+          <div class="big"><span id="json-num">0</span><small id="json-unit">brani</small></div>
+          <p class="sub" id="json-sub">Con "Anteprima" vedi i primi brani come li legge il server, prima di salvarli.</p>
+          <ol id="json-list" class="list"></ol>
+        </div>
+      </div>
+    </form>
 
     <form id="upload-form" class="upload">
       <div class="card">
@@ -503,20 +703,23 @@ function renderDocs() {
     list.append(li);
   }
 
-  const filter = $("doc-filter");
-  const keep = filter.value;
-  filter.replaceChildren(new Option("In tutti i documenti", ""));
-  for (const d of docs) filter.append(new Option(d.name, d.id));
-  filter.value = docs.some((d) => d.id === keep) ? keep : "";
+  for (const filter of [$("doc-filter"), $("pipe-doc")]) {
+    const keep = filter.value;
+    filter.replaceChildren(new Option("In tutti i documenti", ""));
+    for (const d of docs) filter.append(new Option(d.name, d.id));
+    filter.value = docs.some((d) => d.id === keep) ? keep : "";
+  }
 }
 
 // ------------------------------ chiamate al server ------------------------------
 async function api(path, options = {}) {
   let response;
+  // Con FormData (upload di file) il Content-Type lo imposta il browser, con il boundary.
+  const isForm = options.body instanceof FormData;
   try {
     response = await fetch(path, {
       ...options,
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      headers: isForm ? (options.headers || {}) : { "Content-Type": "application/json", ...(options.headers || {}) },
     });
   } catch {
     throw new Error("Il server non risponde. Controlla che uvicorn sia avviato.");
@@ -533,6 +736,7 @@ function describeError(response, body) {
     return "Dati non validi: " + detail.map((e) => `${(e.loc || []).slice(1).join(".")} – ${e.msg}`).join("; ");
   }
   if (response.status === 503) return (detail || "Indicizzazione non riuscita.") + " Riprova tra qualche secondo.";
+  if (response.status === 404 && !detail) return "Funzione non disponibile su questo server.";
   return detail || `Errore ${response.status}`;
 }
 
@@ -911,15 +1115,339 @@ $("upload-form").addEventListener("submit", async (e) => {
   }
 });
 
+// ------------------------------ caricamento: testo o file di chunk ------------------------------
+function selectUploadMode(mode) {
+  $("mode-text").setAttribute("aria-pressed", String(mode === "text"));
+  $("mode-file").setAttribute("aria-pressed", String(mode === "file"));
+  $("upload-form").hidden = mode !== "text";
+  $("chunkfile-form").hidden = mode !== "file";
+}
+$("mode-text").addEventListener("click", () => selectUploadMode("text"));
+$("mode-file").addEventListener("click", () => selectUploadMode("file"));
+
+const MAX_JSON_BYTES = 10 * 1024 * 1024;     // come MAX_BYTES in chunk_routes.py
+let jsonFile = null;
+
+function formatBytes(n) {
+  if (n < 1024) return `${n} byte`;
+  if (n < 1024 * 1024) return `${(n / 1024).toLocaleString("it-IT", { maximumFractionDigits: 1 })} KB`;
+  return `${(n / 1024 / 1024).toLocaleString("it-IT", { maximumFractionDigits: 1 })} MB`;
+}
+
+function pickJson(file) {
+  showError("json-error", "");
+  $("json-msg").replaceChildren();
+  if (!file) return;
+  if (file.size > MAX_JSON_BYTES) {
+    jsonFile = null;
+    updateJsonButtons();
+    return showError("json-error", `Il file pesa ${formatBytes(file.size)}: il massimo e' 10 MB.`);
+  }
+  jsonFile = file;
+  $("json-name").textContent = file.name;
+  $("json-size").textContent = formatBytes(file.size);
+  $("json-picked").hidden = false;
+  if (!$("json-title").value.trim()) $("json-title").value = file.name.replace(/\.[^.]+$/, "");
+  updateJsonButtons();
+}
+
+function updateJsonButtons(busyNow = false) {
+  const ready = !!jsonFile && !!$("json-title").value.trim() && !busyNow;
+  $("json-btn").disabled = !ready;
+  $("json-preview").disabled = !ready;
+}
+$("json-title").addEventListener("input", () => updateJsonButtons());
+$("json-file").addEventListener("change", (e) => pickJson(e.target.files[0]));
+const jsonDrop = $("json-drop");
+["dragenter", "dragover"].forEach((t) => jsonDrop.addEventListener(t, (e) => { e.preventDefault(); jsonDrop.classList.add("over"); }));
+["dragleave", "drop"].forEach((t) => jsonDrop.addEventListener(t, () => jsonDrop.classList.remove("over")));
+jsonDrop.addEventListener("drop", (e) => { e.preventDefault(); pickJson(e.dataTransfer.files[0]); });
+
+// I documenti li dice il file: ogni brano porta il suo document_id. La pagina
+// li raggruppa per mostrarli nell'elenco e nei filtri, con il nome scelto qui.
+function showChunks(result, saved) {
+  const chunks = result.chunks || [];
+  $("json-num").textContent = chunks.length;
+  $("json-unit").textContent = chunks.length === 1 ? "brano" : "brani";
+  const chars = chunks.reduce((n, c) => n + c.text.length, 0).toLocaleString("it-IT");
+  const docs = new Set(chunks.map((c) => c.document_id)).size;
+  const where = docs === 1 ? "1 documento" : `${docs} documenti`;
+  $("json-sub").textContent = saved
+    ? `${result.indexed} salvati in ${where}, ${chars} caratteri`
+    : `Anteprima dei primi ${chunks.length}: ${where}, ${chars} caratteri, ancora da salvare`;
+  $("json-list").replaceChildren(...chunks.slice(0, 50).map((c) => {
+    const t = c.text.trim().replace(/\s+/g, " ");
+    return el("li", "", t.length > 110 ? t.slice(0, 110) + "…" : t);
+  }));
+}
+
+function rememberChunkDocs(ns, title, chunks) {
+  const counts = new Map();
+  for (const c of chunks) counts.set(c.document_id, (counts.get(c.document_id) || 0) + 1);
+  const known = new Set(docsOf(ns).map((d) => d.id));
+  let updated = 0;
+  [...counts].forEach(([id, n], i) => {
+    if (known.has(id)) updated += 1;
+    // Il titolo vero, se il server lo restituisce (document_title dei LegalChunk).
+    const own = chunks.find((c) => c.document_id === id && c.document_title);
+    const name = own ? own.document_title : counts.size === 1 ? title : `${title} (${i + 1})`;
+    rememberDoc(ns, { id, name, chunks: n });
+  });
+  return { documents: counts.size, updated };
+}
+
+async function sendJson(preview) {
+  const ns = namespace();
+  const title = $("json-title").value.trim();
+  showError("json-error", "");
+  $("json-msg").replaceChildren();
+  if (!validNamespace(ns)) return showError("json-error", "Il nome del corso può contenere solo lettere, cifre, _ e -.");
+  if (!jsonFile) return showError("json-error", "Scegli prima un file .json.");
+  if (!title) return showError("json-error", "Scrivi il nome da mostrare per il documento.");
+
+  // Controllo veloce nel browser: un JSON rotto non parte nemmeno.
+  try {
+    JSON.parse(await jsonFile.text());
+  } catch (err) {
+    return showError("json-error", `Il file non e' un JSON valido: ${err.message}`);
+  }
+
+  const btn = preview ? $("json-preview") : $("json-btn");
+  const label = btn.textContent;
+  updateJsonButtons(true);
+  btn.textContent = preview ? "Leggo…" : "Indicizzo…";
+  try {
+    const form = new FormData();
+    form.append("file", jsonFile, jsonFile.name);
+    const url = preview ? `/namespaces/${ns}/preview-file/${previewCount()}` : `/namespaces/${ns}/chunk-file`;
+    const result = await api(url, { method: "POST", body: form });
+    showChunks(result, !preview);
+    if (!preview) {
+      const { updated } = rememberChunkDocs(ns, title, result.chunks || []);
+      renderDocs();
+      const msg = $("json-msg");
+      msg.className = "ok";
+      msg.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+      msg.append(updated ? `Aggiornato, ${result.indexed} brani` : `Indicizzati ${result.indexed} brani`);
+    }
+  } catch (err) {
+    showError("json-error", err.message);
+  } finally {
+    btn.textContent = label;
+    updateJsonButtons();
+  }
+}
+
+// Quanti brani chiedere in anteprima: sempre un intero tra 1 e 200.
+function previewCount() {
+  const n = Math.round(Number($("json-count").value) || 10);
+  const clamped = Math.min(200, Math.max(1, n));
+  $("json-count").value = clamped;
+  return clamped;
+}
+$("json-preview").addEventListener("click", () => sendJson(true));
+$("chunkfile-form").addEventListener("submit", (e) => { e.preventDefault(); sendJson(false); });
+
+// ------------------------------ passo per passo ------------------------------
+// Le stesse fasi di /ask, chiamate una alla volta: riscrittura -> ricerca ->
+// rerank -> risposta. Ogni passo usa l'uscita del precedente; cambiare la
+// domanda o il tipo di ricerca azzera i passi che ne dipendono.
+const STEPS = ["rewrite", "search", "rerank", "generate"];
+const pipe = { method: "hybrid", rewritten: null, search: null, rerank: null, answer: null, running: false };
+
+function pipeHistory() {
+  return $("pipe-history").checked ? historyFor(turns) : [];
+}
+
+function stepNode(name) { return $(`step-${name}`); }
+
+function resetFrom(name) {
+  const from = STEPS.indexOf(name);
+  for (const step of STEPS.slice(from)) {
+    const node = stepNode(step);
+    node.classList.remove("done", "failed");
+    node.querySelector(".step-body").replaceChildren();
+    node.querySelector(".step-meta").textContent = "";
+    if (step === "rewrite") pipe.rewritten = null;
+    else pipe[step] = null;
+  }
+  updatePipeButtons();
+}
+
+function updatePipeButtons() {
+  const hasQuestion = !!$("pipe-question").value.trim();
+  const ready = {
+    rewrite: hasQuestion,
+    search: hasQuestion && pipe.rewritten !== null,
+    rerank: !!(pipe.search && pipe.search.candidates.length),
+    generate: !!(pipe.rerank && pipe.rerank.candidates.length),
+  };
+  for (const step of STEPS) {
+    stepNode(step).querySelector(".step-btn").disabled = pipe.running || !ready[step];
+  }
+  $("pipe-run").disabled = pipe.running || !hasQuestion;
+}
+
+function chunkKey(chunk) { return chunk.chunk_id; }
+
+function renderCandidates(list, previous) {
+  if (!list.length) return el("p", "cands-empty", "Nessun brano trovato.");
+  const before = previous ? new Map(previous.map(([c], i) => [chunkKey(c), i + 1])) : null;
+  const ol = el("ol", "cands");
+  list.forEach(([chunk, score], i) => {
+    const li = el("li", "cand");
+    li.dataset.n = i + 1;
+    const doc = el("span", "cand-doc", docName(namespace(), chunk.document_id));
+    const meta = el("span", "cand-score", `punteggio ${score.toLocaleString("it-IT", { maximumFractionDigits: 3 })}`);
+    if (before) {
+      const old = before.get(chunkKey(chunk));
+      if (old !== undefined && old !== i + 1) {
+        meta.append(el("span", "move " + (old > i + 1 ? "up" : "down"), `${old > i + 1 ? "▲" : "▼"} da ${old}°`));
+      }
+    }
+    const text = el("p", "cand-text", chunk.text.trim());
+    text.title = "Mostra tutto";
+    text.addEventListener("click", () => li.classList.toggle("open"));
+    li.append(el("span", "cand-rank", `${i + 1}`), doc, meta, text);
+    ol.append(li);
+  });
+  return ol;
+}
+
+async function runStep(name) {
+  const ns = namespace();
+  if (!validNamespace(ns)) throw new Error("Il nome del corso può contenere solo lettere, cifre, _ e -.");
+  const node = stepNode(name);
+  const body = node.querySelector(".step-body");
+  const question = $("pipe-question").value.trim();
+  const docId = $("pipe-doc").value || null;
+
+  // un passo rifatto invalida quelli dopo
+  const later = STEPS[STEPS.indexOf(name) + 1];
+  if (later) resetFrom(later);
+  node.classList.remove("done", "failed");
+  body.replaceChildren(el("div", "typing", ""));
+  body.firstChild.innerHTML = "<i></i><i></i><i></i>";
+
+  const started = performance.now();
+  try {
+    if (name === "rewrite") {
+      const rewritten = await api(`/namespaces/${ns}/rewrite/question`, {
+        method: "POST", body: JSON.stringify({ question, history: pipeHistory() }),
+      });
+      pipe.rewritten = rewritten;
+      const area = el("textarea", "area");
+      area.value = rewritten;
+      area.setAttribute("aria-label", "Domanda riscritta: puoi modificarla prima della ricerca");
+      area.addEventListener("input", () => { pipe.rewritten = area.value.trim() || question; resetFrom("search"); });
+      body.replaceChildren(area);
+    }
+
+    if (name === "search") {
+      const payload = { question: pipe.rewritten || question };
+      if (docId) payload.document_id = docId;
+      pipe.search = await api(`/namespaces/${ns}/search/${pipe.method}`, { method: "POST", body: JSON.stringify(payload) });
+      body.replaceChildren(renderCandidates(pipe.search.candidates));
+    }
+
+    if (name === "rerank") {
+      const payload = { question: pipe.rewritten || question, candidates: pipe.search.candidates };
+      const minScore = $("pipe-min-score").value;
+      if (minScore !== "") payload.min_score = Number(minScore);
+      pipe.rerank = await api(`/namespaces/${ns}/search/rerank`, { method: "POST", body: JSON.stringify(payload) });
+      body.replaceChildren(renderCandidates(pipe.rerank.candidates, pipe.search.candidates));
+    }
+
+    if (name === "generate") {
+      const payload = { question: pipe.rewritten || question, candidates: pipe.rerank.candidates, history: pipeHistory() };
+      pipe.answer = await api(`/namespaces/${ns}/generate`, { method: "POST", body: JSON.stringify(payload) });
+      const answer = el("div", "answer" + (pipe.answer.sources.length ? "" : " muted"));
+      answer.innerHTML = renderAnswer(pipe.answer.answer, pipe.answer.sources, "pipe");
+      const sources = pipe.answer.sources.map((src) => [{ ...src, chunk_id: src.chunk_id }, src.score]);
+      body.replaceChildren(answer, el("div", "", ""));
+      body.lastChild.style.marginTop = "14px";
+      body.lastChild.append(renderCandidates(sources));
+    }
+
+    node.classList.add("done");
+    node.querySelector(".step-meta").textContent = `${Math.round(performance.now() - started).toLocaleString("it-IT")} ms`;
+  } catch (err) {
+    node.classList.add("failed");
+    body.replaceChildren(el("p", "step-error", err.message));
+    throw err;
+  } finally {
+    updatePipeButtons();
+  }
+}
+
+async function runSteps(steps) {
+  if (pipe.running) return;
+  pipe.running = true;
+  updatePipeButtons();
+  try {
+    for (const step of steps) {
+      await runStep(step);
+      // niente candidati: inutile proseguire
+      if ((step === "search" && !pipe.search.candidates.length) ||
+          (step === "rerank" && !pipe.rerank.candidates.length)) break;
+    }
+  } catch { /* l'errore e' gia' mostrato nel passo */ }
+  finally {
+    pipe.running = false;
+    updatePipeButtons();
+  }
+}
+
+$("steps").addEventListener("click", (e) => {
+  const btn = e.target.closest(".step-btn");
+  if (btn) return runSteps([btn.dataset.step]);
+  // [n] nella risposta: evidenzia la fonte corrispondente sotto
+  const cite = e.target.closest(".cite");
+  if (cite) {
+    const target = stepNode("generate").querySelector(`.cand[data-n="${cite.dataset.n}"]`);
+    if (target) {
+      target.classList.add("open", "on");
+      target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      setTimeout(() => target.classList.remove("on"), 1600);
+    }
+  }
+});
+
+$("pipe-form").addEventListener("submit", (e) => { e.preventDefault(); runSteps(STEPS); });
+$("pipe-question").addEventListener("input", (e) => {
+  e.target.style.height = "auto";
+  e.target.style.height = e.target.scrollHeight + "px";
+  resetFrom("rewrite");
+});
+$("pipe-question").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("pipe-form").requestSubmit(); }
+});
+$("pipe-history").addEventListener("change", () => resetFrom("rewrite"));
+$("pipe-doc").addEventListener("change", () => resetFrom("search"));
+$("pipe-min-score").addEventListener("input", () => resetFrom("rerank"));
+
+function selectMethod(method) {
+  pipe.method = method;
+  $("method-hybrid").setAttribute("aria-pressed", String(method === "hybrid"));
+  $("method-vectors").setAttribute("aria-pressed", String(method === "vectors"));
+  $("search-sub").textContent = method === "hybrid"
+    ? "Vettori e parole chiave (BM25), fusi in una classifica"
+    : "Solo per significato, con gli embedding";
+  resetFrom("search");
+}
+$("method-hybrid").addEventListener("click", () => selectMethod("hybrid"));
+$("method-vectors").addEventListener("click", () => selectMethod("vectors"));
+
 // ------------------------------ schede e avvio ------------------------------
 function selectTab(which) {
-  for (const t of ["ask", "upload"]) {
+  for (const t of ["ask", "pipe", "upload"]) {
     $(`tab-${t}`).setAttribute("aria-selected", String(t === which));
     $(`view-${t}`).hidden = t !== which;
   }
 }
 $("tab-ask").addEventListener("click", () => selectTab("ask"));
 $("tab-upload").addEventListener("click", () => selectTab("upload"));
+$("tab-pipe").addEventListener("click", () => selectTab("pipe"));
 
 try { $("ns").value = localStorage.getItem(NS_KEY) || "demo"; } catch { /* niente */ }
 $("ns").addEventListener("input", () => {
@@ -932,6 +1460,7 @@ renderDocs();
 loadChat(namespace());
 renderChat();
 updatePreview();
+updatePipeButtons();
 checkHealth();
 setInterval(checkHealth, 15000);
 </script>

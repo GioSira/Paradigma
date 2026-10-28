@@ -5,6 +5,9 @@ from src.chunks.legal_chunk import LegalChunk
 from uuid import UUID
 from datetime import datetime
 
+_MATCH_META = {"_id", "id", "_score", "score"}
+
+
 
 def _chunk_to_record(chunk: DocumentChunk, vector: Sequence[float]) -> Dict[str, Any]:
 
@@ -38,9 +41,44 @@ def _read(hit: Any, name: str, legacy_name: str) -> Any:
         try:
             return hit[key]
         except (KeyError, AttributeError, TypeError):
+            value = getattr(hit, key, object())
+            if value is not object():
+                return value
             continue
 
     raise KeyError(f"il risultato non ha il campo {name!r}")
+
+
+def _match_fields(match: Any) -> Dict[str, Any]:
+
+    data = _match_to_dict(match)
+    nested = data.get("fields") or data.get("_fields")
+
+    if isinstance(nested, Mapping):
+        return dict(nested)
+    
+    return {k: v for k, v in data.items() if k not in _MATCH_META}
+
+
+def _match_to_dict(match: Any) -> Dict[str, Any]:
+    if isinstance(match, Mapping):
+        return dict(match)
+    
+    for method in ("to_dict", "model_dump", "dict"):
+        fn = getattr(match, method, None)
+        if callable(fn):
+            try:
+                data = fn()
+                if isinstance(data, Mapping):
+                    return dict(data)
+            except Exception:
+                pass
+
+    if hasattr(match, "__dict__"):
+        return {k: v for k, v in vars(match).items() if not k.startswith("__")}
+    
+    return {k: getattr(match, k) for k in dir(match)
+            if not k.startswith("__") and not callable(getattr(match, k, None))}
 
 
 def _create_args(namespace: str, top_k: int, top_n: Optional[int] = None,

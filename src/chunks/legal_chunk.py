@@ -96,7 +96,6 @@ class LegalChunk(DocumentChunk):
         d["article"] = self.get_article() or ""
         d["article_title"] = self.get_article_title() or ""
         d["paragraph"] = self.get_paragraph() or ""
-        d["letter"] = self.get_letter or ""
-        d["metadata"] = self._get_metadata()
+        d["letter"] = self.get_letter() or ""
+        d["metadata"] = self.get_metadata()
         return d
-    

@@ -1,10 +1,14 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Tuple
 from uuid import UUID
 
 from src.orchestrator.answer import Answer
+from src.chunks.document_chunk import DocumentChunk
+from src.chunks.legal_chunk import LegalChunk
 from datetime import datetime
 
+
+# ========================================================= IN SCHEMAS =========================================================
 
 class ChunkIn(BaseModel):
 
@@ -28,14 +32,6 @@ class IndexedDocument(BaseModel):
     chunks: int
 
 
-class SourceOut(BaseModel):
-    number: int
-    document_id: UUID
-    chunk_id: UUID
-    text: str
-    score: float
-
-
 class TurnIn(BaseModel):
 
     """Un messaggio gia' scambiato nella conversazione."""
@@ -50,8 +46,42 @@ class QuestionIn(BaseModel):
  
     question: str = Field(..., min_length=1)
     document_id: Optional[UUID] = None   # per cercare in un solo documento
-    history: List[TurnIn] = Field(default_factory=list)
- 
+    history: List[TurnIn] = Field(default_factory=list, max_length=50)
+
+
+class CandidateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question: str
+    candidates: List[Tuple[DocumentChunk, float]] = Field(..., max_length=100)
+    min_score: Optional[float] = None
+
+
+class GenerationIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question: str
+    candidates: List[Tuple[DocumentChunk, float]] = Field(..., max_length=100)
+    history: List[TurnIn] = Field(default_factory=list, max_length=50)
+
+    
+
+
+# ========================================================= OUT SCHEMAS =========================================================
+
+
+class ChunkOuts(BaseModel):
+    chunks: List[LegalChunk]
+    indexed: int 
+
+
+class SourceOut(BaseModel):
+    number: int
+    document_id: UUID
+    chunk_id: UUID
+    text: str
+    score: float
+
 
 class AnswerOut(BaseModel):
     answer: str
@@ -64,6 +94,14 @@ class AnswerOut(BaseModel):
                       text=s.text, score=s.score)
             for s in answer.sources
         ])
+
+
+class CandidateOut(BaseModel):
+ 
+    question: str
+    document_id: Optional[UUID] = None
+    candidates: List[Tuple[DocumentChunk, float]]
+    method: Literal["vectors", "hybrid", "rerank"]
  
  
 class ErrorOut(BaseModel):

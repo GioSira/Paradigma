@@ -2,6 +2,9 @@ import os
 
 from openrouter import OpenRouter
 from openrouter.utils.retries import BackoffStrategy, RetryConfig
+from openrouter.errors import (TooManyRequestsResponseError, BadGatewayResponseError, 
+                               ProviderOverloadedResponseError, ServiceUnavailableResponseError,
+                               RequestTimeoutResponseError)
 
 from dotenv import load_dotenv
 from typing import List, Any, Tuple, Optional, Dict
@@ -10,9 +13,15 @@ from uuid import UUID
 from src.llm.model_selector import ModelSelector
 from src.llm.errors import GenerationError
 from src.llm.conversation import Chat
+from src.llm.utils import retry_async
 
 from src.chunks.document_chunk import DocumentChunk
 from src.collection.document import Document
+
+
+EXCEPTION_TUPLE = (TooManyRequestsResponseError, BadGatewayResponseError, 
+                   ProviderOverloadedResponseError, ServiceUnavailableResponseError,
+                   RequestTimeoutResponseError)
 
 
 class ModelLoader:
@@ -111,6 +120,7 @@ class ModelLoader:
 
     # ============================== EMBEDDING ==============================
 
+    @retry_async(EXCEPTION_TUPLE, max_retries=5, base_delay=5)
     async def embed_documents(self, documents: List[Document]) -> List[Tuple[UUID, Any]]:
 
         if not documents or len(documents) == 0:
@@ -139,6 +149,7 @@ class ModelLoader:
         return [(doc.document_id, item.embedding) for doc, item in zip(documents, data)]
 
 
+    @retry_async(EXCEPTION_TUPLE, max_retries=5, base_delay=5)
     async def embed_text(self, text: str) -> Any:
 
         if not text or not text.strip():
@@ -153,6 +164,7 @@ class ModelLoader:
         return response.data[0].embedding
 
 
+    @retry_async(EXCEPTION_TUPLE, max_retries=5, base_delay=5)
     async def embed_text_batch(self, text_batch: List[str]) -> List[Any]:
 
         if not text_batch or len(text_batch) == 0:
@@ -175,6 +187,7 @@ class ModelLoader:
 
     # ============================== RERANK ==============================
 
+    @retry_async(EXCEPTION_TUPLE, max_retries=5, base_delay=5)
     async def rerank(self, query: str, documents: List[DocumentChunk], top_n: int = 3) -> List[Tuple[float, str]]:
 
         if top_n < 1:
@@ -197,6 +210,8 @@ class ModelLoader:
 
     # ============================== GENERATION ==============================
 
+
+    @retry_async(EXCEPTION_TUPLE, max_retries=5, base_delay=5)
     async def _send_message(self, messages: Dict[str, str], params: Dict[str, Any], top_p: float):
 
         response = await self._client.chat.send_async(messages=messages, 
@@ -223,6 +238,7 @@ class ModelLoader:
         return content
 
 
+    @retry_async(EXCEPTION_TUPLE, max_retries=5, base_delay=5)
     async def generate(self, query: str, context: List[str], chat: Chat, system_prompt: str, top_p=0.95):
 
         llm_context = "\n\n".join(context)
@@ -239,6 +255,7 @@ class ModelLoader:
         return content
 
 
+    @retry_async(EXCEPTION_TUPLE, max_retries=5, base_delay=5)
     async def expanse_question(self, context: str, 
                                 system_prompt: str, 
                                 chat: Chat,
